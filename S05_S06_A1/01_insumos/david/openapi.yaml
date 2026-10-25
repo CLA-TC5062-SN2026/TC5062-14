@@ -1,0 +1,3357 @@
+openapi: 3.0.3
+info:
+  title: UnCalificado — API RESTful (contrato académico spec-first)
+  version: 1.0.0
+  description: Contrato spec-first de UnCalificado, basado en SRS_equipo.md v1.0 (3 octubre 2026). Las extensiones
+    x-acceptance-criteria expresan trazabilidad de contrato, no certifican que las reglas estén implementadas.
+servers:
+- url: https://api.uncalificado.example/api/v1
+  description: URL ilustrativa, no servicio desplegado
+tags:
+- name: Auditoría
+- name: Autorizaciones
+- name: Citas
+- name: Conversaciones
+- name: Cuentas
+- name: Evaluaciones
+- name: Moderación
+- name: Notificaciones
+- name: Operación
+- name: Organizaciones
+- name: Privacidad
+- name: Propuestas
+- name: Proyectos
+- name: Recomendaciones
+- name: Reportes
+- name: Soporte
+- name: Trabajadores
+- name: Trabajos
+- name: Verificaciones
+security:
+- bearerAuth: []
+paths:
+  /api/v1/auth/registrations:
+    post:
+      tags:
+      - Cuentas
+      summary: Registrar cuenta
+      operationId: post_auth_registrations
+      x-acceptance-criteria:
+      - RF-01-AC-1
+      - RF-01-AC-2
+      - RF-01-AC-3
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: &id001
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrationRequest'
+      security: []
+  /api/v1/auth/sessions:
+    post:
+      tags:
+      - Cuentas
+      summary: Autenticar y emitir JWT
+      operationId: post_auth_sessions
+      x-acceptance-criteria:
+      - RF-01-AC-1
+      - RF-01-AC-2
+      - RF-01-AC-3
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      security: []
+  /api/v1/auth/sessions/current:
+    delete:
+      tags:
+      - Cuentas
+      summary: Cerrar sesión
+      operationId: delete_auth_sessions_current
+      responses:
+        '204':
+          description: Sesión revocada
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+  /api/v1/users/me:
+    get:
+      tags:
+      - Cuentas
+      summary: Consultar mi cuenta
+      operationId: get_users_me
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+    patch:
+      tags:
+      - Cuentas
+      summary: Actualizar datos propios
+      operationId: patch_users_me
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/users/me/deletion-requests:
+    post:
+      tags:
+      - Privacidad
+      summary: Solicitar eliminación de datos
+      operationId: post_users_me_deletion_requests
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/projects:
+    post:
+      tags:
+      - Proyectos
+      summary: Crear proyecto
+      operationId: post_projects
+      x-acceptance-criteria:
+      - RF-16-AC-1
+      - RF-16-AC-2
+      - RF-16-AC-3
+      - RF-16-AC-4
+      - RF-16-AC-5
+      - RF-18-AC-1
+      - RF-18-AC-2
+      - RF-18-AC-3
+      - RF-18-AC-4
+      - RF-21-AC-1
+      - RF-21-AC-2
+      - RF-21-AC-3
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectRequest'
+    get:
+      tags:
+      - Proyectos
+      summary: Listar mis proyectos
+      operationId: get_projects
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Collection'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+  /api/v1/projects/{projectId}:
+    get:
+      tags:
+      - Proyectos
+      summary: Consultar proyecto
+      operationId: get_projects__projectId
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema: &id002
+          type: string
+          format: uuid
+    patch:
+      tags:
+      - Proyectos
+      summary: Actualizar proyecto
+      operationId: patch_projects__projectId
+      x-acceptance-criteria:
+      - RF-16-AC-1
+      - RF-16-AC-2
+      - RF-16-AC-3
+      - RF-16-AC-4
+      - RF-16-AC-5
+      - RF-21-AC-1
+      - RF-21-AC-2
+      - RF-21-AC-3
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/projects/{projectId}/messages:
+    post:
+      tags:
+      - Conversaciones
+      summary: Enviar mensaje al agente
+      operationId: post_projects__projectId__messages
+      x-acceptance-criteria:
+      - RF-13-AC-1
+      - RF-13-AC-2
+      - RF-14-AC-1
+      - RF-14-AC-2
+      - RF-14-AC-3
+      - RF-14-AC-4
+      - RF-14-AC-5
+      - RF-15-AC-1
+      - RF-15-AC-2
+      - RF-15-AC-3
+      - RF-15-AC-4
+      - RF-19-AC-1
+      - RF-19-AC-2
+      - RF-25-AC-1
+      - RF-25-AC-2
+      - RF-46-AC-1
+      - RF-46-AC-2
+      - RF-46-AC-3
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+    get:
+      tags:
+      - Conversaciones
+      summary: Consultar conversación
+      operationId: get_projects__projectId__messages
+      x-acceptance-criteria:
+      - RF-46-AC-1
+      - RF-46-AC-2
+      - RF-46-AC-3
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema: *id002
+  /api/v1/projects/{projectId}/photos:
+    post:
+      tags:
+      - Conversaciones
+      summary: Adjuntar fotografía
+      operationId: post_projects__projectId__photos
+      x-acceptance-criteria:
+      - RF-17-AC-1
+      - RF-17-AC-2
+      - RF-17-AC-3
+      - RF-18-AC-1
+      - RF-18-AC-2
+      - RF-18-AC-3
+      - RF-18-AC-4
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+  /api/v1/projects/{projectId}/summary-confirmations:
+    post:
+      tags:
+      - Conversaciones
+      summary: Confirmar resumen
+      operationId: post_projects__projectId__summary_confirmations
+      x-acceptance-criteria:
+      - RF-20-AC-1
+      - RF-20-AC-2
+      - RF-20-AC-3
+      - RF-20-AC-4
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/projects/{projectId}/support-requests:
+    post:
+      tags:
+      - Soporte
+      summary: Solicitar soporte humano
+      operationId: post_projects__projectId__support_requests
+      x-acceptance-criteria:
+      - RF-22-AC-1
+      - RF-22-AC-2
+      - RF-22-AC-3
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/workers:
+    get:
+      tags:
+      - Trabajadores
+      summary: Buscar trabajadores con filtros
+      operationId: get_workers
+      x-acceptance-criteria:
+      - RF-26-AC-1
+      - RF-26-AC-2
+      - RF-26-AC-3
+      - RF-26-AC-4
+      - RF-27-AC-1
+      - RF-28-AC-1
+      - RF-28-AC-2
+      - RF-29-AC-1
+      - RF-29-AC-2
+      - RF-29-AC-3
+      - RF-29-AC-4
+      - RF-29-AC-5
+      - RF-29-AC-6
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Collection'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: trade
+        in: query
+        schema: &id003
+          type: string
+      - name: zone
+        in: query
+        schema: *id003
+      - name: availability
+        in: query
+        schema: *id003
+      - name: minRating
+        in: query
+        schema: *id003
+      - name: verifiedIdentity
+        in: query
+        schema: *id003
+      - name: similarExperience
+        in: query
+        schema: *id003
+  /api/v1/workers/{workerId}:
+    get:
+      tags:
+      - Trabajadores
+      summary: Consultar perfil
+      operationId: get_workers__workerId
+      x-acceptance-criteria:
+      - RF-07-AC-1
+      - RF-07-AC-2
+      - RF-07-AC-3
+      - RF-07-AC-4
+      - RF-07-AC-5
+      - RF-08-AC-1
+      - RF-08-AC-2
+      - RF-08-AC-3
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: workerId
+        in: path
+        required: true
+        schema: *id002
+  /api/v1/workers/me/profile:
+    put:
+      tags:
+      - Trabajadores
+      summary: Crear o reemplazar perfil
+      operationId: put_workers_me_profile
+      x-acceptance-criteria:
+      - RF-03-AC-1
+      - RF-03-AC-2
+      - RF-03-AC-3
+      - RF-03-AC-4
+      - RF-53-AC-1
+      - RF-53-AC-2
+      - RF-53-AC-3
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileRequest'
+  /api/v1/workers/me/availability:
+    patch:
+      tags:
+      - Trabajadores
+      summary: Actualizar disponibilidad
+      operationId: patch_workers_me_availability
+      x-acceptance-criteria:
+      - RF-06-AC-1
+      - RF-06-AC-2
+      - RF-06-AC-3
+      - RF-35-AC-1
+      - RF-35-AC-2
+      - RF-35-AC-3
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/workers/me/portfolio-photos:
+    post:
+      tags:
+      - Trabajadores
+      summary: Agregar foto al portafolio
+      operationId: post_workers_me_portfolio_photos
+      x-acceptance-criteria:
+      - RF-04-AC-1
+      - RF-04-AC-2
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+  /api/v1/workers/me/verification-documents:
+    post:
+      tags:
+      - Verificaciones
+      summary: Enviar evidencia de verificación
+      operationId: post_workers_me_verification_documents
+      x-acceptance-criteria:
+      - RF-09-AC-1
+      - RF-09-AC-2
+      - RF-10-AC-1
+      - RF-10-AC-2
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+  /api/v1/workers/me/data-sharing-authorizations:
+    post:
+      tags:
+      - Privacidad
+      summary: Autorizar datos del trabajador
+      operationId: post_workers_me_data_sharing_authorizations
+      x-acceptance-criteria:
+      - RF-52-AC-1
+      - RF-52-AC-2
+      - RF-52-AC-3
+      - RF-52-AC-4
+      - RF-52-AC-5
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/organizations/me/profile:
+    put:
+      tags:
+      - Organizaciones
+      summary: Crear o reemplazar perfil
+      operationId: put_organizations_me_profile
+      x-acceptance-criteria:
+      - RF-05-AC-1
+      - RF-05-AC-2
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileRequest'
+  /api/v1/organizations/me/availability:
+    patch:
+      tags:
+      - Organizaciones
+      summary: Actualizar disponibilidad general
+      operationId: patch_organizations_me_availability
+      x-acceptance-criteria:
+      - RF-06-AC-1
+      - RF-06-AC-2
+      - RF-06-AC-3
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/organizations/me/verification-documents:
+    post:
+      tags:
+      - Verificaciones
+      summary: Enviar documentos de organización
+      operationId: post_organizations_me_verification_documents
+      x-acceptance-criteria:
+      - RF-11-AC-1
+      - RF-11-AC-2
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+  /api/v1/organizations/{organizationId}:
+    get:
+      tags:
+      - Organizaciones
+      summary: Consultar organización
+      operationId: get_organizations__organizationId
+      x-acceptance-criteria:
+      - RF-07-AC-1
+      - RF-07-AC-2
+      - RF-07-AC-3
+      - RF-07-AC-4
+      - RF-07-AC-5
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: organizationId
+        in: path
+        required: true
+        schema: *id002
+  /api/v1/projects/{projectId}/recommendations:
+    get:
+      tags:
+      - Recomendaciones
+      summary: Obtener recomendaciones
+      operationId: get_projects__projectId__recommendations
+      x-acceptance-criteria:
+      - RF-26-AC-1
+      - RF-26-AC-2
+      - RF-26-AC-3
+      - RF-26-AC-4
+      - RF-30-AC-1
+      - RF-30-AC-2
+      - RF-30-AC-3
+      - RF-30-AC-4
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema: *id002
+  /api/v1/projects/{projectId}/recommendations/refreshes:
+    post:
+      tags:
+      - Recomendaciones
+      summary: Recalcular por nueva zona o fechas
+      operationId: post_projects__projectId__recommendations_refreshes
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/projects/{projectId}/authorizations:
+    post:
+      tags:
+      - Autorizaciones
+      summary: Autorizar o rechazar acción sensible
+      operationId: post_projects__projectId__authorizations
+      x-acceptance-criteria:
+      - RF-24-AC-1
+      - RF-24-AC-2
+      - RF-24-AC-3
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/projects/{projectId}/audit-events:
+    get:
+      tags:
+      - Auditoría
+      summary: Consultar historial
+      operationId: get_projects__projectId__audit_events
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema: *id002
+  /api/v1/appointments:
+    get:
+      tags:
+      - Citas
+      summary: Consultar citas
+      operationId: get_appointments
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Collection'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+    post:
+      tags:
+      - Citas
+      summary: Crear propuesta de cita
+      operationId: post_appointments
+      x-acceptance-criteria:
+      - RF-33-AC-1
+      - RF-34-AC-1
+      - RF-34-AC-2
+      - RF-34-AC-3
+      - RF-34-AC-4
+      - RF-34-AC-5
+      - RF-34-AC-6
+      - RF-35-AC-1
+      - RF-35-AC-2
+      - RF-35-AC-3
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppointmentRequest'
+  /api/v1/appointments/{appointmentId}:
+    get:
+      tags:
+      - Citas
+      summary: Consultar cita
+      operationId: get_appointments__appointmentId
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: appointmentId
+        in: path
+        required: true
+        schema: *id002
+  /api/v1/appointments/{appointmentId}/responses:
+    post:
+      tags:
+      - Citas
+      summary: Aceptar o rechazar propuesta
+      operationId: post_appointments__appointmentId__responses
+      x-acceptance-criteria:
+      - RF-32-AC-1
+      - RF-32-AC-2
+      - RF-32-AC-3
+      - RF-32-AC-4
+      - RF-34-AC-1
+      - RF-34-AC-2
+      - RF-34-AC-3
+      - RF-34-AC-4
+      - RF-34-AC-5
+      - RF-34-AC-6
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: appointmentId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/appointments/{appointmentId}/change-requests:
+    post:
+      tags:
+      - Citas
+      summary: Cancelar, retrasar o reprogramar
+      operationId: post_appointments__appointmentId__change_requests
+      x-acceptance-criteria:
+      - RF-37-AC-1
+      - RF-37-AC-2
+      - RF-37-AC-3
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: appointmentId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/appointments/{appointmentId}/visit-status:
+    patch:
+      tags:
+      - Citas
+      summary: Registrar visita realizada
+      operationId: patch_appointments__appointmentId__visit_status
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: appointmentId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/proposals:
+    post:
+      tags:
+      - Propuestas
+      summary: Crear propuesta escrita
+      operationId: post_proposals
+      x-acceptance-criteria:
+      - RF-38-AC-1
+      - RF-38-AC-2
+      - RF-38-AC-3
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProposalRequest'
+  /api/v1/proposals/{proposalId}:
+    get:
+      tags:
+      - Propuestas
+      summary: Consultar propuesta
+      operationId: get_proposals__proposalId
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: proposalId
+        in: path
+        required: true
+        schema: *id002
+  /api/v1/proposals/{proposalId}/responses:
+    post:
+      tags:
+      - Propuestas
+      summary: Aceptar, rechazar o pedir ajustes
+      operationId: post_proposals__proposalId__responses
+      x-acceptance-criteria:
+      - RF-39-AC-1
+      - RF-39-AC-2
+      - RF-39-AC-3
+      - RF-39-AC-4
+      - RF-39-AC-5
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: proposalId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/proposals/{proposalId}/revisions:
+    post:
+      tags:
+      - Propuestas
+      summary: Enviar versión revisada
+      operationId: post_proposals__proposalId__revisions
+      x-acceptance-criteria:
+      - RF-39-AC-1
+      - RF-39-AC-2
+      - RF-39-AC-3
+      - RF-39-AC-4
+      - RF-39-AC-5
+      - RF-43-AC-1
+      - RF-43-AC-2
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: proposalId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/jobs/{jobId}/change-requests:
+    post:
+      tags:
+      - Trabajos
+      summary: Solicitar cambio de costo o alcance
+      operationId: post_jobs__jobId__change_requests
+      x-acceptance-criteria:
+      - RF-40-AC-1
+      - RF-40-AC-2
+      - RF-40-AC-3
+      - RF-40-AC-4
+      - RF-55-AC-1
+      - RF-55-AC-2
+      - RF-55-AC-3
+      - RF-55-AC-4
+      - RF-55-AC-5
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/jobs/{jobId}/change-requests/{changeId}/responses:
+    post:
+      tags:
+      - Trabajos
+      summary: Responder a cambio
+      operationId: post_jobs__jobId__change_requests__changeId__responses
+      x-acceptance-criteria:
+      - RF-41-AC-1
+      - RF-41-AC-2
+      - RF-41-AC-3
+      - RF-41-AC-4
+      - RF-41-AC-5
+      - RF-41-AC-6
+      - RF-41-AC-7
+      - RF-41-AC-8
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema: *id002
+      - name: changeId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/jobs/{jobId}/costs:
+    get:
+      tags:
+      - Trabajos
+      summary: Consultar costo y avance
+      operationId: get_jobs__jobId__costs
+      x-acceptance-criteria:
+      - RF-44-AC-1
+      - RF-44-AC-2
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema: *id002
+  /api/v1/jobs/{jobId}/progress-reports:
+    post:
+      tags:
+      - Trabajos
+      summary: Reportar avance
+      operationId: post_jobs__jobId__progress_reports
+      x-acceptance-criteria:
+      - RF-45-AC-1
+      - RF-45-AC-2
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProgressRequest'
+    get:
+      tags:
+      - Trabajos
+      summary: Consultar reportes y resúmenes
+      operationId: get_jobs__jobId__progress_reports
+      x-acceptance-criteria:
+      - RF-45-AC-1
+      - RF-45-AC-2
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Collection'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema: *id002
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+  /api/v1/jobs/{jobId}/progress-reports/{reportId}/responses:
+    post:
+      tags:
+      - Trabajos
+      summary: Confirmar o disputar avance
+      operationId: post_jobs__jobId__progress_reports__reportId__responses
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema: *id002
+      - name: reportId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/jobs/{jobId}/closure-requests:
+    post:
+      tags:
+      - Trabajos
+      summary: Solicitar cierre
+      operationId: post_jobs__jobId__closure_requests
+      x-acceptance-criteria:
+      - RF-47-AC-1
+      - RF-47-AC-2
+      - RF-47-AC-3
+      - RF-47-AC-4
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/jobs/{jobId}/closure-requests/{closureId}/responses:
+    post:
+      tags:
+      - Trabajos
+      summary: Confirmar o rechazar cierre
+      operationId: post_jobs__jobId__closure_requests__closureId__responses
+      x-acceptance-criteria:
+      - RF-47-AC-1
+      - RF-47-AC-2
+      - RF-47-AC-3
+      - RF-47-AC-4
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema: *id002
+      - name: closureId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/jobs/{jobId}/reviews:
+    post:
+      tags:
+      - Evaluaciones
+      summary: Evaluar trabajo concluido
+      operationId: post_jobs__jobId__reviews
+      x-acceptance-criteria:
+      - RF-49-AC-1
+      - RF-49-AC-2
+      - RF-49-AC-3
+      - RF-49-AC-4
+      - RF-49-AC-5
+      - RF-50-AC-1
+      - RF-50-AC-2
+      - RF-50-AC-3
+      - RF-50-AC-4
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewRequest'
+  /api/v1/workers/{workerId}/reviews:
+    get:
+      tags:
+      - Evaluaciones
+      summary: Consultar evaluaciones
+      operationId: get_workers__workerId__reviews
+      x-acceptance-criteria:
+      - RF-51-AC-1
+      - RF-51-AC-2
+      - RF-51-AC-3
+      - RF-51-AC-4
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Collection'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: workerId
+        in: path
+        required: true
+        schema: *id002
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+  /api/v1/reviews/{reviewId}/responses:
+    post:
+      tags:
+      - Evaluaciones
+      summary: Responder evaluación negativa
+      operationId: post_reviews__reviewId__responses
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: reviewId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/reviews/{reviewId}/appeals:
+    post:
+      tags:
+      - Evaluaciones
+      summary: Solicitar revisión
+      operationId: post_reviews__reviewId__appeals
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: reviewId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/reports:
+    post:
+      tags:
+      - Reportes
+      summary: Presentar reporte
+      operationId: post_reports
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportRequest'
+  /api/v1/reports/{reportId}:
+    get:
+      tags:
+      - Reportes
+      summary: Consultar reporte autorizado
+      operationId: get_reports__reportId
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: reportId
+        in: path
+        required: true
+        schema: *id002
+  /api/v1/reports/{reportId}/evidence-requests:
+    post:
+      tags:
+      - Moderación
+      summary: Solicitar evidencias
+      operationId: post_reports__reportId__evidence_requests
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: reportId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/reports/{reportId}/decisions:
+    post:
+      tags:
+      - Moderación
+      summary: Registrar decisión administrativa
+      operationId: post_reports__reportId__decisions
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: reportId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/reports/{reportId}/appeals:
+    post:
+      tags:
+      - Moderación
+      summary: Solicitar segunda revisión
+      operationId: post_reports__reportId__appeals
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: reportId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/reports/{reportId}/appeals/{appealId}/decisions:
+    post:
+      tags:
+      - Moderación
+      summary: Resolver segunda revisión
+      operationId: post_reports__reportId__appeals__appealId__decisions
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: reportId
+        in: path
+        required: true
+        schema: *id002
+      - name: appealId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/workers/{workerId}/verification-status:
+    patch:
+      tags:
+      - Moderación
+      summary: Resolver verificación
+      operationId: patch_workers__workerId__verification_status
+      x-acceptance-criteria:
+      - RF-12-AC-1
+      - RF-12-AC-2
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: workerId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/organizations/{organizationId}/verification-status:
+    patch:
+      tags:
+      - Moderación
+      summary: Resolver verificación organizacional
+      operationId: patch_organizations__organizationId__verification_status
+      x-acceptance-criteria:
+      - RF-12-AC-1
+      - RF-12-AC-2
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: organizationId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/workers/{workerId}/sanctions:
+    post:
+      tags:
+      - Moderación
+      summary: Advertir o suspender con revisión humana
+      operationId: post_workers__workerId__sanctions
+      responses:
+        '201':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: workerId
+        in: path
+        required: true
+        schema: *id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+  /api/v1/notifications:
+    get:
+      tags:
+      - Notificaciones
+      summary: Consultar notificaciones
+      operationId: get_notifications
+      x-acceptance-criteria:
+      - RF-36-AC-1
+      - RF-36-AC-2
+      - RF-36-AC-3
+      - RF-48-AC-1
+      - RF-48-AC-2
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Collection'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+  /api/v1/health:
+    get:
+      tags:
+      - Operación
+      summary: Comprobar salud del servicio
+      operationId: get_health
+      responses:
+        '200':
+          description: Operación realizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Error con detalle estructurado
+          content: *id001
+        '401':
+          description: Error con detalle estructurado
+          content: *id001
+        '403':
+          description: Error con detalle estructurado
+          content: *id001
+        '404':
+          description: Error con detalle estructurado
+          content: *id001
+        '422':
+          description: Error con detalle estructurado
+          content: *id001
+        '500':
+          description: Error con detalle estructurado
+          content: *id001
+      security: []
+  /api/v1/users/me/privacy-consents:
+    post:
+      tags:
+      - Privacidad
+      summary: Registrar consentimiento
+      operationId: post_api_v1_users_me_privacy_consents
+      responses:
+        '400':
+          description: Solicitud inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No autenticado
+        '403':
+          description: Sin permiso
+        '404':
+          description: Recurso inexistente
+        '422':
+          description: Regla de negocio no satisfecha
+        '500':
+          description: Error interno
+        '201':
+          description: Recurso registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+      x-acceptance-criteria:
+      - RF-02-AC-1
+      - RF-02-AC-2
+      - RF-02-AC-3
+  /api/v1/projects/{projectId}/visualizations:
+    post:
+      tags:
+      - Proyectos
+      summary: Solicitar visualización orientativa
+      operationId: post_api_v1_projects__projectid__visualizations
+      responses:
+        '400':
+          description: Solicitud inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No autenticado
+        '403':
+          description: Sin permiso
+        '404':
+          description: Recurso inexistente
+        '422':
+          description: Regla de negocio no satisfecha
+        '500':
+          description: Error interno
+        '201':
+          description: Recurso registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+      x-acceptance-criteria:
+      - RF-23-AC-1
+      - RF-23-AC-2
+  /api/v1/projects/{projectId}/provider-selections:
+    post:
+      tags:
+      - Proyectos
+      summary: Gestionar recurso
+      operationId: post_api_v1_projects__projectid__provider_selections
+      responses:
+        '400':
+          description: Solicitud inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No autenticado
+        '403':
+          description: Sin permiso
+        '404':
+          description: Recurso inexistente
+        '422':
+          description: Regla de negocio no satisfecha
+        '500':
+          description: Error interno
+        '201':
+          description: Recurso registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+      x-acceptance-criteria:
+      - RF-31-AC-1
+      - RF-31-AC-2
+      - RF-31-AC-3
+  /api/v1/jobs/{jobId}/change-requests/{changeId}/analysis:
+    post:
+      tags:
+      - Cambios
+      summary: Gestionar recurso
+      operationId: post_api_v1_jobs__jobid__change_requests__changeid__analysis
+      responses:
+        '400':
+          description: Solicitud inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No autenticado
+        '403':
+          description: Sin permiso
+        '404':
+          description: Recurso inexistente
+        '422':
+          description: Regla de negocio no satisfecha
+        '500':
+          description: Error interno
+        '201':
+          description: Recurso registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: changeId
+        in: path
+        required: true
+        schema:
+          type: string
+      x-acceptance-criteria:
+      - RF-42-AC-1
+      - RF-42-AC-2
+  /api/v1/users/me/privacy-requests:
+    post:
+      tags:
+      - Privacidad
+      summary: Solicitar ejercicio de derechos ARCO
+      operationId: post_api_v1_users_me_privacy_requests
+      responses:
+        '400':
+          description: Solicitud inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No autenticado
+        '403':
+          description: Sin permiso
+        '404':
+          description: Recurso inexistente
+        '422':
+          description: Regla de negocio no satisfecha
+        '500':
+          description: Error interno
+        '201':
+          description: Recurso registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationRequest'
+      x-acceptance-criteria:
+      - RF-54-AC-1
+      - RF-54-AC-2
+      - RF-54-AC-3
+      - RF-54-AC-4
+      - RF-54-AC-5
+  /api/v1/users/me/privacy-requests/{requestId}:
+    get:
+      tags:
+      - Privacidad
+      summary: Gestionar recurso
+      operationId: get_api_v1_users_me_privacy_requests__requestid
+      responses:
+        '200':
+          description: Resultado de la operación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Solicitud inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No autenticado
+        '403':
+          description: Sin permiso
+        '404':
+          description: Recurso inexistente
+        '422':
+          description: Regla de negocio no satisfecha
+        '500':
+          description: Error interno
+      parameters:
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: string
+      x-acceptance-criteria:
+      - RF-54-AC-1
+      - RF-54-AC-2
+      - RF-54-AC-3
+      - RF-54-AC-4
+      - RF-54-AC-5
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ApiError:
+      type: object
+      properties:
+        code: *id003
+        message: *id003
+        details:
+          type: array
+          items: *id003
+        traceId: *id003
+      required:
+      - code
+      - message
+    Resource:
+      type: object
+      properties:
+        id: *id002
+        status: *id003
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        links:
+          type: object
+          additionalProperties: *id003
+      required:
+      - id
+      - status
+      - createdAt
+    Collection:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Resource'
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          minimum: 0
+      required:
+      - items
+      - page
+      - pageSize
+      - total
+    MutationRequest:
+      type: object
+      properties:
+        action: *id003
+        status: *id003
+        description: *id003
+        decision:
+          type: string
+          enum:
+          - accept
+          - reject
+          - counteroffer
+          - confirm
+          - dispute
+          - request_changes
+        reason: *id003
+        data:
+          type: object
+          additionalProperties: true
+        occurredAt:
+          type: string
+          format: date-time
+    RegistrationRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        role:
+          type: string
+          enum:
+          - client
+          - worker
+          - organization
+      required:
+      - email
+      - password
+      - role
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password: *id003
+      required:
+      - email
+      - password
+    TokenResponse:
+      type: object
+      properties:
+        accessToken: *id003
+        tokenType:
+          type: string
+          enum:
+          - Bearer
+        expiresIn:
+          type: integer
+          minimum: 1
+      required:
+      - accessToken
+      - tokenType
+      - expiresIn
+    MessageRequest:
+      type: object
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 4000
+      required:
+      - text
+    ProjectRequest:
+      type: object
+      properties:
+        workType: *id003
+        zone: *id003
+        preferredDates:
+          type: array
+          items:
+            type: string
+            format: date
+        description: *id003
+        budget:
+          type: number
+          minimum: 0
+      required:
+      - workType
+      - zone
+      - preferredDates
+      - description
+    ProfileRequest:
+      type: object
+      properties:
+        name: *id003
+        photoUrl:
+          type: string
+          format: uri
+        trade: *id003
+        yearsExperience:
+          type: integer
+          minimum: 0
+        zone: *id003
+        organizationName: *id003
+        contactRepresentative: *id003
+        trades:
+          type: array
+          items: *id003
+    AppointmentRequest:
+      type: object
+      properties:
+        projectId: *id002
+        workerId: *id002
+        startAt:
+          type: string
+          format: date-time
+        endAt:
+          type: string
+          format: date-time
+      required:
+      - projectId
+      - workerId
+      - startAt
+      - endAt
+    ProposalRequest:
+      type: object
+      properties:
+        appointmentId: *id002
+        workDescription: *id003
+        materials:
+          type: array
+          items: *id003
+        cost:
+          type: number
+          minimum: 0
+        plannedDates: *id003
+      required:
+      - appointmentId
+      - workDescription
+      - materials
+      - cost
+      - plannedDates
+    ProgressRequest:
+      type: object
+      properties:
+        photoUrl:
+          type: string
+          format: uri
+        message:
+          type: string
+          minLength: 1
+      required:
+      - photoUrl
+      - message
+    ReviewRequest:
+      type: object
+      properties:
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+          minLength: 1
+      required:
+      - rating
+      - comment
+    ReportRequest:
+      type: object
+      properties:
+        subjectType:
+          type: string
+          enum:
+          - worker
+          - client
+          - job
+          - review
+        subjectId: *id002
+        reason: *id003
+        severity:
+          type: string
+          enum:
+          - normal
+          - potentially_serious
+      required:
+      - subjectType
+      - subjectId
+      - reason

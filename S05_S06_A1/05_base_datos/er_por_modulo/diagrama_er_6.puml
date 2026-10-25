@@ -1,0 +1,104 @@
+@startuml diagrama_er_6
+' =====================================================================
+' UnCalificado — Diagrama entidad-relación de la base de datos (MySQL 8)
+' GENERADO por generar_er.py a partir de information_schema después de
+' cargar esquema_bd.sql. No editar a mano: regenerar si cambia el SQL.
+' Notación: * = NOT NULL · <<PK>> · <<FK>> · <<UQ>> (único) ·
+' ||--o{ = uno a muchos · |o--o{ = FK opcional · ||--o| = uno a uno
+' =====================================================================
+title UnCalificado — Modelo entidad-relación · Seguimiento, mensajes y evaluaciones\n<size:11>4 tablas del módulo con todas sus columnas · en gris, tablas de otros módulos relacionadas · * = NOT NULL</size>
+hide circle
+skinparam linetype ortho
+skinparam shadowing false
+skinparam nodesep 40
+skinparam ranksep 70
+skinparam defaultFontSize 11
+skinparam class {
+  BorderColor #546E7A
+  ArrowColor #546E7A
+}
+
+package "Cuentas y privacidad" #F5F5F5 {
+  entity "usuarios" as usuarios #EEEEEE {
+    * id <<PK>>
+  }
+}
+
+package "Proveedores y verificación" #F5F5F5 {
+  entity "trabajadores_independientes" as trabajadores_independientes #EEEEEE {
+    * proveedor_id <<PK>>
+  }
+}
+
+package "Solicitud y agente de IA" #F5F5F5 {
+  entity "solicitudes" as solicitudes #EEEEEE {
+    * id <<PK>>
+  }
+}
+
+package "Seguimiento, mensajes y evaluaciones" #E0F2F1 {
+  entity "mensajes_canal" as mensajes_canal {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+    * emisor_id : CHAR(36) <<FK>>
+    * contenido : VARCHAR(4000)
+  }
+  entity "solicitudes_cierre" as solicitudes_cierre {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+      nota : VARCHAR(1000)
+      respuesta : ENUM('CONFIRMADO','RECHAZADO')
+      descripcion_pendientes : VARCHAR(2000)
+      respondida_en : DATETIME
+      aviso_admin_en : DATETIME
+  }
+  entity "revelaciones_domicilio" as revelaciones_domicilio {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+    * trabajador_id : CHAR(36) <<FK>>
+    * disparador : ENUM('PROPUESTA_ACEPTADA','VISITA_CONFIRMADA')
+  }
+  entity "evaluaciones" as evaluaciones {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+    * direccion : ENUM(2)
+    * evaluador_id : CHAR(36) <<FK>>
+    * evaluado_id : CHAR(36) <<FK>>
+    * estado : ENUM(4)
+      calificacion : DECIMAL(3,2)
+      puntualidad : TINYINT↑
+      calidad : TINYINT↑
+      limpieza : TINYINT↑
+      apego_presupuesto : TINYINT↑
+      comentario : VARCHAR(1000)
+      registrada_en : DATETIME
+      publicada_en : DATETIME
+  }
+}
+
+' ── Relaciones (una por FK; las FK compuestas con columna de rol generada
+'    se dibujan con su columna real) ──
+usuarios ||--o{ evaluaciones : evaluado_id
+usuarios ||--o{ evaluaciones : evaluador_id
+solicitudes ||--o{ evaluaciones : solicitud_id
+usuarios ||--o{ mensajes_canal : emisor_id
+solicitudes ||--o{ mensajes_canal : solicitud_id
+solicitudes ||--o{ revelaciones_domicilio : solicitud_id
+trabajadores_independientes ||--o{ revelaciones_domicilio : trabajador_id
+solicitudes ||--o{ solicitudes_cierre : solicitud_id
+
+legend right
+  |= Símbolo |= Significado |
+  | * columna | NOT NULL |
+  | <<PK>> / <<FK>> / <<UQ>> | llave primaria / foránea / única |
+  | línea con doble barra → pata de gallo | uno (FK obligatoria) a muchos |
+  | línea con círculo y barra → pata de gallo | cero o uno (FK opcional) a muchos |
+  | línea con doble barra → círculo y barra | uno a cero o uno (FK única) |
+  | ENUM(n) | enumeración de n valores (ver esquema_bd.sql) |
+  | ↑ | UNSIGNED |
+endlegend
+@enduml

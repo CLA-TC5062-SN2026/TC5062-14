@@ -1,0 +1,147 @@
+@startuml arquitectura_04_componentes_uml
+' Diagrama de componentes UML con interfaces provistas (lollipop) y requeridas (socket).
+' Muestra cómo se aplican los principios de diseño (ver arquitectura.md §7):
+' capas, bajo acoplamiento por interfaces, inversión de dependencias hacia la IA y los archivos.
+' Verde = implementado · Gris = previsto por el contrato.
+
+skinparam shadowing false
+skinparam componentStyle uml2
+skinparam linetype ortho
+skinparam component {
+  BackgroundColor<<implementado>> #E8F5E9
+  BorderColor<<implementado>> #2E7D32
+  BackgroundColor<<previsto>> #ECEFF1
+  BorderColor<<previsto>> #78909C
+}
+skinparam package {
+  BackgroundColor #FFFFFF
+}
+
+title UnCalificado — Diagrama de componentes UML (interfaces y capas)
+
+component "Aplicación web responsive" as WEB <<previsto>>
+component "App nativa" as APP <<previsto>>
+
+() "API REST\n(JSON/HTTPS + JWT)\nopenapi.yaml v0.2.0" as I_REST
+
+package "API REST — backend Flask" {
+
+  package "Capa de presentación (rutas)" {
+    component "Cuentas\n/auth" as C_AUTH <<implementado>>
+    component "Solicitudes\n/solicitudes" as C_SOL <<implementado>>
+    component "Soporte\n/casos-soporte" as C_SOP <<implementado>>
+    component "Conversaciones\n/conversaciones" as C_CONV <<previsto>>
+    component "Contratación\n/citas /propuestas /cambios" as C_CONT <<previsto>>
+    component "Proveedores, Verificaciones,\nBúsqueda, Evaluaciones,\nPrivacidad, Notificaciones" as C_OTROS <<previsto>>
+  }
+
+  package "Seguridad transversal" {
+    component "Middleware de\nautenticación y roles" as C_MW <<implementado>>
+    component "Tokens JWT" as C_JWT <<implementado>>
+    () "IAutorizacion\n@token_required\n@roles_required" as I_AUTZ
+    () "ITokens\nemitir / verificar" as I_TOK
+  }
+
+  package "Soporte común" {
+    component "Validación" as C_VAL <<implementado>>
+    component "Errores del contrato" as C_ERR <<implementado>>
+    () "IValidacion\n(422 por campo)" as I_VAL
+    () "IErrores\n{codigo, mensaje, errores}" as I_ERR
+  }
+
+  package "Capa de servicios (lógica de negocio)" {
+    component "usuarios_service" as S_USR <<implementado>>
+    component "solicitudes_service" as S_SOL <<implementado>>
+    component "casos_service" as S_CAS <<implementado>>
+    component "Servicios de agente\ny contratación" as S_PREV <<previsto>>
+    () "IUsuarios" as I_USR
+    () "ISolicitudes" as I_SOL
+    () "ICasos" as I_CAS
+  }
+
+  package "Puertos hacia el exterior" {
+    component "Adaptador del\nagente de IA" as A_IA <<previsto>>
+    component "Adaptador de\nalmacenamiento" as A_ARCH <<previsto>>
+    () "IAgenteIA\nconversar / clasificar /\nanalizar / representar" as I_IA
+    () "IAlmacenamiento\nguardar / leer / borrar" as I_ARCH
+  }
+
+  package "Capa de datos" {
+    component "Acceso a datos\n(db.py, PyMySQL)" as C_DB <<implementado>>
+    () "IConexion\nquery_one / query_all /\nexecute" as I_DB
+  }
+
+  component "Planificador de procesos" as C_PLAN <<previsto>>
+}
+
+database "MySQL 8" as BD
+cloud "Proveedor de IA\nexterno" as IA_EXT
+component "Almacén de archivos" as ARCH <<previsto>>
+
+' Interfaces provistas
+C_AUTH - I_REST
+C_MW -up- I_AUTZ
+C_JWT -up- I_TOK
+C_VAL -up- I_VAL
+C_ERR -up- I_ERR
+S_USR -up- I_USR
+S_SOL -up- I_SOL
+S_CAS -up- I_CAS
+A_IA -up- I_IA
+A_ARCH -up- I_ARCH
+C_DB -up- I_DB
+
+' Interfaces requeridas
+WEB ..> I_REST
+APP ..> I_REST
+C_SOL ..> I_AUTZ
+C_SOP ..> I_AUTZ
+C_AUTH ..> I_TOK
+C_MW ..> I_TOK
+C_MW ..> I_USR
+C_AUTH ..> I_VAL
+C_SOL ..> I_VAL
+C_SOP ..> I_VAL
+C_AUTH ..> I_USR
+C_SOL ..> I_SOL
+C_SOP ..> I_CAS
+C_SOP ..> I_SOL
+C_VAL ..> I_ERR
+C_MW ..> I_ERR
+
+C_CONV ..> I_AUTZ
+C_CONT ..> I_AUTZ
+C_OTROS ..> I_AUTZ
+C_CONV ..> S_PREV
+C_CONT ..> S_PREV
+C_OTROS ..> S_PREV
+S_PREV ..> I_IA
+S_PREV ..> I_ARCH
+S_PREV ..> I_DB
+C_PLAN ..> S_PREV : expiraciones,\nrecordatorios
+
+S_USR ..> I_DB
+S_SOL ..> I_DB
+S_CAS ..> I_DB
+
+C_DB ..> BD : SQL parametrizado
+A_IA ..> IA_EXT : HTTPS
+A_ARCH ..> ARCH
+
+note bottom of I_IA
+  Inversión de dependencias (DIP):
+  los servicios dependen de la interfaz
+  IAgenteIA, no del proveedor concreto.
+  En pruebas se sustituye por un doble
+  de prueba (DoD-03); si la IA no está
+  disponible aplica la captura manual (RF-21).
+end note
+
+note right of C_MW
+  Seguridad en un solo punto (RNF-03, RNF-04):
+  401 sin token o token inválido,
+  403 sin rol; la propiedad del recurso
+  se verifica en cada ruta.
+end note
+
+@enduml

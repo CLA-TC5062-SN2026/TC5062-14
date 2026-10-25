@@ -1,0 +1,84 @@
+@startuml arquitectura_equipo_despliegue
+' =====================================================================
+' UnCalificado — Despliegue consolidado del equipo (UML de despliegue)
+' Insumos: despliegues de David (.mmd), Israel, Jesús y Norman (.puml).
+' Decisiones AR-xx en arquitectura_equipo.md.
+' =====================================================================
+
+title UnCalificado — Diagrama de despliegue consolidado del equipo
+
+skinparam shadowing false
+skinparam defaultTextAlignment center
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam node {
+  BackgroundColor #FFFFFF
+  BorderColor #455A64
+}
+skinparam note {
+  BackgroundColor #FFFBE6
+  BorderColor #C9B458
+}
+
+node "Dispositivo del usuario" as dispositivo {
+  node "Navegador web" <<cliente web>> {
+    artifact "SPA en ejecución" as spa
+  }
+  node "Sistema operativo móvil" <<cliente móvil>> {
+    artifact "App nativa" as app
+  }
+}
+
+cloud "Proveedor cloud (VM o servicio de contenedores)" as nube {
+  node "Servidor de aplicaciones\n<<Docker Compose>>" as host {
+    node "proxy\n<<contenedor Nginx>>" as proxy {
+      artifact "TLS · CORS · límite de peticiones\nrequestId · build de la SPA" as edge
+    }
+    node "api\n<<contenedor Gunicorn>>" as api {
+      artifact "uncalificado (Flask 3.1)\nmonolito modular · /api/v1" as war
+    }
+    node "planificador\n<<contenedor>>" as plan {
+      artifact "uncalificado (mismo código)\nAPScheduler · tareas idempotentes" as jobs
+    }
+    node "db\n<<contenedor MySQL 8>>" as db {
+      artifact "esquema relacional\n+ migraciones versionadas" as schema
+    }
+    storage "volumen persistente\nmysql_data" as vol
+  }
+  storage "Almacenamiento de objetos privado\n(compatible con S3)" as obj
+  node "Secretos y observabilidad" as ops {
+    artifact "variables de entorno cifradas\n(JWT_SECRET, credenciales)\nlogs JSON · métricas" as sec
+  }
+}
+
+cloud "Proveedor de IA externo" as ia
+
+spa --> proxy : HTTPS 443
+app --> proxy : HTTPS 443
+proxy --> api : HTTP 8000\n(red interna)
+api --> db : TCP 3306\n(red interna)
+plan --> db : TCP 3306
+db --> vol
+api --> obj : HTTPS\nURLs firmadas
+plan --> obj : HTTPS (borrado programado)
+api --> ia : HTTPS saliente
+api ..> ops : logs y secretos
+plan ..> ops : logs
+
+note right of db
+  Solo accesible desde la red interna
+  de Docker: no publica puertos.
+end note
+
+note bottom of obj
+  Privado por defecto. El cliente nunca
+  recibe credenciales: solo URLs firmadas
+  temporales tras validar rol y propiedad.
+end note
+
+note right of host
+  Un solo servidor durante el piloto (RNF-08).
+  Para escalar: varias réplicas de api detrás
+  del proxy (la API no guarda estado: JWT).
+end note
+@enduml

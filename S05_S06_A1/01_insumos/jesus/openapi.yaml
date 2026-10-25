@@ -1,0 +1,1206 @@
+openapi: 3.0.3
+info:
+  title: UnCalificado API
+  version: 1.0.0
+  description: |
+    Contrato spec-first del MVP de UnCalificado. La API es stateless y no
+    procesa pagos. PostgreSQL conserva datos transaccionales y metadatos;
+    los binarios se almacenan en object storage y se entregan mediante URLs
+    temporales autorizadas. La implementación objetivo usa API Gateway y
+    funciones Lambda agrupadas por capacidad; no implica microservicios
+    independientes ni expone detalles de despliegue al consumidor.
+  contact:
+    name: Equipo UnCalificado
+servers:
+  - url: https://api.uncalificado.example.com/api/v1
+    description: Producción
+tags:
+  - name: auth
+  - name: users
+  - name: providers
+  - name: requests
+  - name: appointments
+  - name: proposals
+  - name: changes
+  - name: messages
+  - name: evaluations
+  - name: files
+  - name: support
+  - name: privacy
+security:
+  - bearerAuth: []
+paths:
+  /auth/register:
+    post:
+      tags: [auth]
+      security: []
+      summary: Registrar una cuenta pública
+      operationId: registerUser
+      x-acceptance-criteria: [RF-01-AC-1, RF-01-AC-3, RF-02-AC-1, RF-02-AC-2, RNF-11-AC-1]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201': {description: Cuenta creada, content: {application/json: {schema: {$ref: '#/components/schemas/AuthResponse'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '409': {description: El correo ya está registrado, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /auth/login:
+    post:
+      tags: [auth]
+      security: []
+      summary: Iniciar sesión
+      operationId: login
+      x-acceptance-criteria: [RF-01-AC-1, RF-01-AC-2, RF-02-AC-3, RNF-11-AC-2]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/LoginRequest'}
+      responses:
+        '200': {description: Sesión iniciada, content: {application/json: {schema: {$ref: '#/components/schemas/AuthResponse'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /auth/consents:
+    post:
+      tags: [auth]
+      summary: Registrar consentimiento o aceptación de nueva versión
+      operationId: createConsent
+      x-acceptance-criteria: [RF-02-AC-1, RF-02-AC-2, RF-02-AC-3, RNF-07-AC-1, RNF-14-AC-1]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ConsentRequest'}
+      responses:
+        '201': {description: Consentimiento registrado, content: {application/json: {schema: {$ref: '#/components/schemas/Consent'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: Cerrar sesión
+      operationId: logout
+      x-acceptance-criteria: [RNF-11-AC-3, RNF-13-AC-1]
+      responses:
+        '204': {description: Sesión invalidada}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /users/me:
+    get:
+      tags: [users]
+      operationId: getCurrentUser
+      x-acceptance-criteria: [RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2, RNF-14-AC-1]
+      responses:
+        '200': {description: Usuario actual, content: {application/json: {schema: {$ref: '#/components/schemas/User'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '500': {$ref: '#/components/responses/ServerError'}
+    patch:
+      tags: [users]
+      operationId: updateCurrentUser
+      x-acceptance-criteria: [RF-54-AC-2, RNF-04-AC-1, RNF-11-AC-1]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UserUpdateRequest'}
+      responses:
+        '200': {description: Usuario actualizado, content: {application/json: {schema: {$ref: '#/components/schemas/User'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /providers:
+    get:
+      tags: [providers]
+      operationId: listProviders
+      x-acceptance-criteria: [RF-26-AC-1, RF-26-AC-2, RF-26-AC-3, RF-26-AC-4, RF-27-AC-1, RF-28-AC-1, RF-28-AC-2, RF-29-AC-1, RF-29-AC-2, RF-29-AC-3, RF-29-AC-4, RF-29-AC-5, RF-29-AC-6, RF-30-AC-1, RF-30-AC-2, RF-30-AC-3, RF-30-AC-4, RF-07-AC-4, RNF-08-AC-1, RNF-10-AC-1]
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+        - {name: oficio, in: query, schema: {type: string}}
+        - {name: zona, in: query, schema: {type: string}}
+        - {name: fecha, in: query, schema: {type: string, format: date}}
+        - {name: verificado, in: query, schema: {type: boolean}}
+        - {name: experienciaSimilar, in: query, schema: {type: boolean}}
+        - {name: ordenarPor, in: query, schema: {type: string, enum: [calificacion, precio, disponibilidad, cercania, garantia]}}
+        - {name: precioMin, in: query, schema: {type: number, minimum: 0}}
+        - {name: precioMax, in: query, schema: {type: number, minimum: 0}}
+      responses:
+        '200': {description: Resultados paginados, content: {application/json: {schema: {$ref: '#/components/schemas/ProviderPage'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+    post:
+      tags: [providers]
+      operationId: createProviderProfile
+      x-acceptance-criteria: [RF-05-AC-1, RF-05-AC-2, RF-03-AC-1, RF-03-AC-2, RF-03-AC-4, RF-06-AC-3, RNF-03-AC-1, RNF-04-AC-1]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ProviderUpsertRequest'}
+      responses:
+        '201': {description: Perfil creado, content: {application/json: {schema: {$ref: '#/components/schemas/Provider'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /providers/{providerId}:
+    parameters: [{$ref: '#/components/parameters/ProviderId'}]
+    get:
+      tags: [providers]
+      operationId: getProvider
+      x-acceptance-criteria: [RF-07-AC-1, RF-07-AC-2, RF-07-AC-3, RF-07-AC-4, RF-07-AC-5, RF-08-AC-1, RF-08-AC-2, RF-08-AC-3, RF-53-AC-1, RF-53-AC-2, RF-53-AC-3, RNF-01-AC-1, RNF-01-AC-2, RNF-02-AC-1, RNF-02-AC-2, RNF-04-AC-2, RNF-08-AC-1]
+      responses:
+        '200': {description: Perfil público autorizado, content: {application/json: {schema: {$ref: '#/components/schemas/Provider'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/ServerError'}
+    put:
+      tags: [providers]
+      operationId: replaceProvider
+      x-acceptance-criteria: [RF-03-AC-3, RF-05-AC-1, RF-06-AC-1, RF-06-AC-2, RNF-04-AC-1]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ProviderUpsertRequest'}
+      responses:
+        '200': {description: Perfil reemplazado, content: {application/json: {schema: {$ref: '#/components/schemas/Provider'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /providers/{providerId}/portfolio:
+    parameters: [{$ref: '#/components/parameters/ProviderId'}]
+    get:
+      tags: [providers, files]
+      operationId: listPortfolio
+      x-acceptance-criteria: [RF-04-AC-1, RF-04-AC-2, RNF-06-AC-1]
+      responses:
+        '200': {description: Fotos del portafolio, content: {application/json: {schema: {$ref: '#/components/schemas/FilePage'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/ServerError'}
+    post:
+      tags: [providers, files]
+      operationId: addPortfolioFile
+      x-acceptance-criteria: [RF-04-AC-1, RF-18-AC-1, RF-18-AC-2, RF-18-AC-3, RNF-06-AC-1]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/FileUploadRequest'}
+      responses:
+        '201': {description: Archivo asociado, content: {application/json: {schema: {$ref: '#/components/schemas/File'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /providers/{providerId}/verifications:
+    parameters: [{$ref: '#/components/parameters/ProviderId'}]
+    post:
+      tags: [providers]
+      operationId: submitVerification
+      x-acceptance-criteria: [RF-09-AC-1, RF-09-AC-2, RF-10-AC-1, RF-10-AC-2, RF-11-AC-1, RF-11-AC-2, RF-12-AC-1, RF-12-AC-2]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/VerificationRequest'}
+      responses:
+        '201': {description: Verificación enviada, content: {application/json: {schema: {$ref: '#/components/schemas/Verification'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /providers/{providerId}/verifications/{verificationId}:
+    parameters:
+      - {$ref: '#/components/parameters/ProviderId'}
+      - {name: verificationId, in: path, required: true, schema: {$ref: '#/components/schemas/Uuid'}}
+    patch:
+      tags: [providers]
+      operationId: reviewVerification
+      x-acceptance-criteria: [RF-09-AC-1, RF-09-AC-2, RF-10-AC-1, RF-10-AC-2, RF-11-AC-1, RF-11-AC-2, RF-12-AC-1, RF-12-AC-2, RNF-04-AC-1]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: {type: string, enum: [VERIFICADA, RECHAZADA, RETIRADA]}
+                reason: {type: string}
+      responses:
+        '200': {description: Verificación revisada, content: {application/json: {schema: {$ref: '#/components/schemas/Verification'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /requests:
+    get:
+      tags: [requests]
+      operationId: listRequests
+      x-acceptance-criteria: [RF-16-AC-1, RF-16-AC-5, RF-21-AC-1, RF-21-AC-2, RF-45-AC-1, RNF-03-AC-1, RNF-04-AC-2, RNF-13-AC-1]
+      parameters: [{$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}, {name: estado, in: query, schema: {$ref: '#/components/schemas/ProjectStatus'}}]
+      responses:
+        '200': {description: Solicitudes del usuario, content: {application/json: {schema: {$ref: '#/components/schemas/RequestPage'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '500': {$ref: '#/components/responses/ServerError'}
+    post:
+      tags: [requests]
+      operationId: createRequest
+      x-acceptance-criteria: [RF-13-AC-1, RF-13-AC-2, RF-14-AC-1, RF-14-AC-2, RF-14-AC-3, RF-14-AC-4, RF-14-AC-5, RF-15-AC-1, RF-15-AC-2, RF-15-AC-3, RF-15-AC-4, RF-16-AC-1, RF-16-AC-2, RF-16-AC-3, RF-16-AC-4, RF-16-AC-5, RF-19-AC-1, RF-19-AC-2, RF-20-AC-1, RF-20-AC-2, RF-20-AC-3, RF-20-AC-4, RF-21-AC-1, RF-21-AC-2, RF-21-AC-3, RF-22-AC-1, RF-22-AC-2, RF-22-AC-3, RF-23-AC-1, RF-23-AC-2, RF-24-AC-1, RF-24-AC-2, RF-24-AC-3, RF-25-AC-1, RF-25-AC-2, RF-27-AC-1, RF-30-AC-1, RF-30-AC-2, RF-30-AC-3, RF-30-AC-4, RNF-01-AC-2, RNF-08-AC-3]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RequestCreate'}
+      responses:
+        '201': {description: Solicitud creada, content: {application/json: {schema: {$ref: '#/components/schemas/ServiceRequest'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /requests/{requestId}:
+    parameters: [{$ref: '#/components/parameters/RequestId'}]
+    get:
+      tags: [requests]
+      operationId: getRequest
+      x-acceptance-criteria: [RF-16-AC-1, RF-16-AC-5, RF-20-AC-1, RF-20-AC-2, RF-20-AC-3, RF-20-AC-4, RF-31-AC-2, RF-44-AC-1, RF-44-AC-2, RF-45-AC-1, RF-52-AC-1, RF-52-AC-4, RF-52-AC-5, RNF-03-AC-1, RNF-04-AC-2, RNF-13-AC-1]
+      responses:
+        '200': {description: Solicitud, content: {application/json: {schema: {$ref: '#/components/schemas/ServiceRequest'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/ServerError'}
+    patch:
+      tags: [requests]
+      operationId: updateRequest
+      x-acceptance-criteria: [RF-14-AC-5, RF-16-AC-3, RF-16-AC-4, RF-17-AC-2, RF-19-AC-1, RF-19-AC-2, RF-20-AC-2, RF-20-AC-3, RF-21-AC-2, RF-24-AC-1, RF-24-AC-2]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RequestPatch'}
+      responses:
+        '200': {description: Solicitud actualizada, content: {application/json: {schema: {$ref: '#/components/schemas/ServiceRequest'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /requests/{requestId}/attachments:
+    parameters: [{$ref: '#/components/parameters/RequestId'}]
+    post:
+      tags: [requests, files]
+      operationId: addRequestAttachment
+      x-acceptance-criteria: [RF-17-AC-1, RF-17-AC-2, RF-17-AC-3, RF-18-AC-1, RF-18-AC-2, RF-18-AC-3, RF-18-AC-4, RF-21-AC-2, RNF-06-AC-1]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/FileUploadRequest'}
+      responses:
+        '201': {description: Archivo asociado, content: {application/json: {schema: {$ref: '#/components/schemas/File'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '413': {description: Archivo excede el límite, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /requests/{requestId}/visual-representations:
+    parameters: [{$ref: '#/components/parameters/RequestId'}]
+    post:
+      tags: [requests, files]
+      operationId: createVisualRepresentation
+      x-acceptance-criteria: [RF-23-AC-1, RF-23-AC-2, RNF-06-AC-1]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [description, referenceFileIds]
+              properties:
+                description: {type: string, minLength: 1}
+                referenceFileIds: {type: array, minItems: 1, items: {$ref: '#/components/schemas/Uuid'}}
+      responses:
+        '201': {description: Representación generada, content: {application/json: {schema: {$ref: '#/components/schemas/VisualRepresentation'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /requests/{requestId}/search:
+    parameters: [{$ref: '#/components/parameters/RequestId'}]
+    post:
+      tags: [requests, providers]
+      operationId: searchProviders
+      x-acceptance-criteria: [RF-26-AC-1, RF-26-AC-2, RF-26-AC-3, RF-26-AC-4, RF-27-AC-1, RF-28-AC-1, RF-28-AC-2, RF-29-AC-1, RF-29-AC-2, RF-29-AC-3, RF-29-AC-4, RF-29-AC-5, RF-29-AC-6, RF-30-AC-1, RF-30-AC-2, RF-30-AC-3, RF-30-AC-4, RF-31-AC-1, RF-31-AC-2, RF-31-AC-3]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SearchRequest'}
+      responses:
+        '200': {description: Resultados y recomendaciones, content: {application/json: {schema: {$ref: '#/components/schemas/SearchResponse'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /requests/{requestId}/selection:
+    parameters: [{$ref: '#/components/parameters/RequestId'}]
+    put:
+      tags: [requests]
+      operationId: selectProvider
+      x-acceptance-criteria: [RF-31-AC-1, RF-31-AC-2, RF-31-AC-3, RF-24-AC-1, RF-24-AC-2]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [providerId]
+              properties:
+                providerId: {$ref: '#/components/schemas/Uuid'}
+      responses:
+        '200': {description: Proveedor seleccionado, content: {application/json: {schema: {$ref: '#/components/schemas/ServiceRequest'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /requests/{requestId}/provider-decision:
+    parameters: [{$ref: '#/components/parameters/RequestId'}]
+    post:
+      tags: [requests]
+      operationId: decideProviderRequest
+      x-acceptance-criteria: [RF-32-AC-1, RF-32-AC-2, RF-32-AC-3, RF-32-AC-4, RNF-08-AC-2]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision: {type: string, enum: [ACEPTAR, RECHAZAR]}
+      responses:
+        '200': {description: Decisión del proveedor registrada, content: {application/json: {schema: {$ref: '#/components/schemas/ServiceRequest'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Solicitud expirada o ya decidida, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /requests/{requestId}/support-requests:
+    parameters: [{$ref: '#/components/parameters/RequestId'}]
+    post:
+      tags: [requests, support]
+      operationId: createSupportRequest
+      x-acceptance-criteria: [RF-22-AC-1, RF-22-AC-2, RF-22-AC-3]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: {type: string, minLength: 1}
+      responses:
+        '201': {description: Soporte solicitado, content: {application/json: {schema: {$ref: '#/components/schemas/SupportRequest'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /appointments:
+    post:
+      tags: [appointments]
+      operationId: createAppointmentProposal
+      x-acceptance-criteria: [RF-32-AC-4, RF-33-AC-1, RF-34-AC-1, RF-34-AC-2, RF-34-AC-3, RF-34-AC-4, RF-34-AC-5, RF-34-AC-6, RF-35-AC-1, RF-35-AC-3, RF-36-AC-1, RF-36-AC-2, RF-36-AC-3, RF-37-AC-3, RF-52-AC-3, RNF-08-AC-2]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AppointmentCreate'}
+      responses:
+        '201': {description: Cita propuesta, content: {application/json: {schema: {$ref: '#/components/schemas/Appointment'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Franjas no disponibles, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /appointments/{appointmentId}:
+    parameters: [{$ref: '#/components/parameters/AppointmentId'}]
+    get:
+      tags: [appointments]
+      operationId: getAppointment
+      x-acceptance-criteria: [RF-33-AC-1, RF-34-AC-1, RF-34-AC-2, RF-34-AC-3, RF-36-AC-1, RF-36-AC-2, RF-36-AC-3, RF-52-AC-1, RF-53-AC-1, RF-53-AC-2, RF-53-AC-3]
+      responses:
+        '200': {description: Cita, content: {application/json: {schema: {$ref: '#/components/schemas/Appointment'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/ServerError'}
+    patch:
+      tags: [appointments]
+      operationId: updateAppointment
+      x-acceptance-criteria: [RF-34-AC-2, RF-37-AC-1, RF-37-AC-2, RF-52-AC-3, RF-24-AC-1, RF-24-AC-2]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AppointmentPatch'}
+      responses:
+        '200': {description: Cita actualizada, content: {application/json: {schema: {$ref: '#/components/schemas/Appointment'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Conflicto de horario, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+    delete:
+      tags: [appointments]
+      operationId: cancelAppointment
+      x-acceptance-criteria: [RF-35-AC-2, RF-37-AC-1, RF-37-AC-2]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CancelRequest'}
+      responses:
+        '200': {description: Cita cancelada, content: {application/json: {schema: {$ref: '#/components/schemas/Appointment'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /proposals:
+    post:
+      tags: [proposals]
+      operationId: createProposal
+      x-acceptance-criteria: [RF-38-AC-1, RF-38-AC-2, RF-38-AC-3, RF-39-AC-1, RF-39-AC-2, RF-39-AC-3, RF-39-AC-4, RF-39-AC-5, RF-24-AC-1, RF-24-AC-2, RF-24-AC-3, RF-52-AC-2, RNF-08-AC-2, RNF-12-AC-1]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ProposalCreate'}
+      responses:
+        '201': {description: Propuesta creada, content: {application/json: {schema: {$ref: '#/components/schemas/Proposal'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /proposals/{proposalId}/decision:
+    parameters: [{$ref: '#/components/parameters/ProposalId'}]
+    post:
+      tags: [proposals]
+      operationId: decideProposal
+      x-acceptance-criteria: [RF-39-AC-1, RF-39-AC-2, RF-39-AC-3, RF-39-AC-4, RF-39-AC-5, RF-43-AC-1, RF-43-AC-2, RF-52-AC-2, RNF-12-AC-1]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ProposalDecision'}
+      responses:
+        '200': {description: Decisión registrada, content: {application/json: {schema: {$ref: '#/components/schemas/Proposal'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Estado incompatible, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /changes:
+    post:
+      tags: [changes]
+      operationId: createChange
+      x-acceptance-criteria: [RF-40-AC-1, RF-40-AC-2, RF-40-AC-3, RF-40-AC-4, RF-41-AC-4, RF-41-AC-6, RF-55-AC-1, RF-55-AC-2, RF-42-AC-1, RF-42-AC-2]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ChangeCreate'}
+      responses:
+        '201': {description: Cambio pendiente, content: {application/json: {schema: {$ref: '#/components/schemas/Change'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /changes/{changeId}/decision:
+    parameters: [{$ref: '#/components/parameters/ChangeId'}]
+    patch:
+      tags: [changes]
+      operationId: decideChange
+      x-acceptance-criteria: [RF-41-AC-1, RF-41-AC-2, RF-41-AC-3, RF-41-AC-4, RF-41-AC-5, RF-41-AC-6, RF-41-AC-7, RF-41-AC-8, RF-43-AC-1, RF-43-AC-2, RF-44-AC-1, RF-44-AC-2, RF-55-AC-3, RF-55-AC-4, RF-55-AC-5, RF-24-AC-1, RF-24-AC-2, RNF-08-AC-2, RNF-12-AC-1]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ChangeDecision'}
+      responses:
+        '200': {description: Cambio decidido, content: {application/json: {schema: {$ref: '#/components/schemas/Change'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Cambio vencido o estado incompatible, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /changes/{changeId}/analysis:
+    parameters: [{$ref: '#/components/parameters/ChangeId'}]
+    post:
+      tags: [changes]
+      operationId: analyzeChange
+      x-acceptance-criteria: [RF-42-AC-1, RF-42-AC-2]
+      responses:
+        '200': {description: Análisis informativo de IA, content: {application/json: {schema: {$ref: '#/components/schemas/AiAnalysis'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Análisis no disponible, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /requests/{requestId}/status:
+    parameters: [{$ref: '#/components/parameters/RequestId'}]
+    patch:
+      tags: [requests]
+      operationId: updateRequestStatus
+      x-acceptance-criteria: [RF-45-AC-1, RF-45-AC-2, RF-47-AC-1, RF-47-AC-2, RF-47-AC-3, RF-47-AC-4, RF-48-AC-1, RF-48-AC-2, RF-39-AC-5, RF-24-AC-1, RF-24-AC-2]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: {$ref: '#/components/schemas/ProjectStatus'}
+                reason: {type: string}
+      responses:
+        '200': {description: Estado actualizado, content: {application/json: {schema: {$ref: '#/components/schemas/ServiceRequest'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Transición no permitida, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /requests/{requestId}/messages:
+    parameters: [{$ref: '#/components/parameters/RequestId'}]
+    get:
+      tags: [messages]
+      operationId: listMessages
+      x-acceptance-criteria: [RF-46-AC-1, RF-46-AC-2, RF-46-AC-3, RNF-04-AC-2, RNF-13-AC-1]
+      responses:
+        '200': {description: Mensajes sin teléfonos, content: {application/json: {schema: {$ref: '#/components/schemas/MessagePage'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/ServerError'}
+    post:
+      tags: [messages]
+      operationId: createMessage
+      x-acceptance-criteria: [RF-46-AC-1, RF-46-AC-2, RF-46-AC-3, RNF-04-AC-2]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content: {type: string, minLength: 1, maxLength: 4000}
+      responses:
+        '201': {description: Mensaje enviado, content: {application/json: {schema: {$ref: '#/components/schemas/Message'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /requests/{requestId}/audit-log:
+    parameters: [{$ref: '#/components/parameters/RequestId'}]
+    get:
+      tags: [requests]
+      operationId: listAuditEvents
+      x-acceptance-criteria: [RNF-12-AC-1, RNF-12-AC-2, RNF-04-AC-2]
+      responses:
+        '200': {description: Bitácora inmutable con rastros de decisiones, content: {application/json: {schema: {$ref: '#/components/schemas/AuditLog'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /requests/{requestId}/evaluations:
+    parameters: [{$ref: '#/components/parameters/RequestId'}]
+    post:
+      tags: [evaluations]
+      operationId: createEvaluation
+      x-acceptance-criteria: [RF-49-AC-1, RF-49-AC-2, RF-49-AC-3, RF-49-AC-4, RF-49-AC-5, RF-50-AC-1, RF-50-AC-2, RF-50-AC-3, RF-50-AC-4, RF-51-AC-1, RF-51-AC-2, RF-51-AC-3, RF-51-AC-4, RNF-03-AC-1, RNF-04-AC-2]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EvaluationCreate'}
+      responses:
+        '201': {description: Evaluación registrada, content: {application/json: {schema: {$ref: '#/components/schemas/Evaluation'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Evaluación duplicada o ventana cerrada, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /requests/{requestId}/privacy:
+    parameters: [{$ref: '#/components/parameters/RequestId'}]
+    get:
+      tags: [privacy]
+      operationId: getPrivateLocation
+      x-acceptance-criteria: [RF-52-AC-1, RF-52-AC-2, RF-52-AC-3, RF-52-AC-4, RF-52-AC-5, RNF-05-AC-1, RNF-06-AC-1]
+      responses:
+        '200': {description: Domicilio autorizado o zona aproximada, content: {application/json: {schema: {$ref: '#/components/schemas/PrivateLocation'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /privacy/requests:
+    post:
+      tags: [privacy]
+      operationId: createPrivacyRequest
+      x-acceptance-criteria: [RF-54-AC-1, RF-54-AC-2, RF-54-AC-3, RF-54-AC-4, RF-54-AC-5, RNF-07-AC-1]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PrivacyRequestCreate'}
+      responses:
+        '201': {description: Solicitud ARCO registrada, content: {application/json: {schema: {$ref: '#/components/schemas/PrivacyRequest'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /privacy/requests/{folio}/fulfillment:
+    parameters:
+      - {name: folio, in: path, required: true, schema: {type: string}}
+    post:
+      tags: [privacy]
+      operationId: fulfillPrivacyRequest
+      x-acceptance-criteria: [RF-54-AC-1, RF-54-AC-2, RF-54-AC-3, RF-54-AC-4, RF-54-AC-5, RNF-04-AC-1, RNF-12-AC-2]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PrivacyFulfillment'}
+      responses:
+        '200': {description: Solicitud ARCO atendida, content: {application/json: {schema: {$ref: '#/components/schemas/PrivacyRequest'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Anonimización bloqueada por proyecto activo, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /admin/availability-reports:
+    get:
+      tags: [privacy]
+      operationId: getAvailabilityReport
+      x-acceptance-criteria: [RNF-09-AC-1, RNF-04-AC-1]
+      parameters:
+        - {name: month, in: query, required: true, schema: {type: string, pattern: '^[0-9]{4}-[0-9]{2}$'}}
+      responses:
+        '200': {description: Reporte mensual de disponibilidad, content: {application/json: {schema: {$ref: '#/components/schemas/AvailabilityReport'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Page: {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+    PageSize: {name: pageSize, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+    ProviderId: {name: providerId, in: path, required: true, schema: {$ref: '#/components/schemas/Uuid'}}
+    RequestId: {name: requestId, in: path, required: true, schema: {$ref: '#/components/schemas/Uuid'}}
+    AppointmentId: {name: appointmentId, in: path, required: true, schema: {$ref: '#/components/schemas/Uuid'}}
+    ProposalId: {name: proposalId, in: path, required: true, schema: {$ref: '#/components/schemas/Uuid'}}
+    ChangeId: {name: changeId, in: path, required: true, schema: {$ref: '#/components/schemas/Uuid'}}
+  responses:
+    BadRequest: {description: Petición mal formada, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    Unauthorized: {description: JWT ausente, inválido o expirado, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    Forbidden: {description: Rol o propiedad insuficiente, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    NotFound: {description: Recurso no encontrado, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    ValidationError: {description: Regla de negocio o esquema inválido, content: {application/json: {schema: {$ref: '#/components/schemas/ValidationError'}}}}
+    ServerError: {description: Error interno, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  schemas:
+    Uuid: {type: string, format: uuid}
+    DateTime: {type: string, format: date-time}
+    User:
+      type: object
+      required: [id, email, role, createdAt]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        email: {type: string, format: email}
+        role: {type: string, enum: [CLIENTE, PROVEEDOR, ADMINISTRADOR]}
+        createdAt: {$ref: '#/components/schemas/DateTime'}
+        privacyConsentVersion: {type: string}
+    RegisterRequest:
+      type: object
+      required: [email, password, role, privacyConsentVersion, adultDeclaration]
+      properties:
+        email: {type: string, format: email}
+        password: {type: string, minLength: 10, format: password}
+        role: {type: string, enum: [CLIENTE, PROVEEDOR]}
+        privacyConsentVersion: {type: string, minLength: 1}
+        adultDeclaration: {type: boolean, const: true}
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: {type: string, format: email}
+        password: {type: string, format: password}
+        secondFactorCode: {type: string}
+    AuthResponse:
+      type: object
+      required: [accessToken, tokenType, expiresIn, user]
+      properties:
+        accessToken: {type: string}
+        tokenType: {type: string, enum: [Bearer]}
+        expiresIn: {type: integer, minimum: 1}
+        user: {$ref: '#/components/schemas/User'}
+    ConsentRequest:
+      type: object
+      required: [privacyVersion, adultDeclaration]
+      properties:
+        privacyVersion: {type: string}
+        adultDeclaration: {type: boolean, const: true}
+    Consent:
+      type: object
+      required: [id, privacyVersion, acceptedAt]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        privacyVersion: {type: string}
+        acceptedAt: {$ref: '#/components/schemas/DateTime'}
+    UserUpdateRequest:
+      type: object
+      minProperties: 1
+      properties:
+        name: {type: string, minLength: 1, maxLength: 160}
+        phone: {type: string}
+    ProviderUpsertRequest:
+      type: object
+      required: [name, modality, trades, experienceYears, coverage]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 160}
+        modality: {type: string, enum: [TRABAJADOR, ORGANIZACION]}
+        trades: {type: array, minItems: 1, items: {type: string, enum: [albanileria, plomeria, electricidad, carpinteria, herreria, pintura, pisos_azulejos, vidrieria_canceleria, tablaroca, impermeabilizacion]}}
+        experienceYears: {type: integer, minimum: 0}
+        coverage: {type: array, minItems: 1, items: {type: string}}
+        generalAvailability: {type: string}
+    Provider:
+      allOf:
+        - $ref: '#/components/schemas/ProviderUpsertRequest'
+        - type: object
+          required: [id, verificationStatus, rating, updatedAt]
+          properties:
+            id: {$ref: '#/components/schemas/Uuid'}
+            verificationStatus: {type: object, additionalProperties: {type: string, enum: [DECLARADA, PENDIENTE, VERIFICADA, RECHAZADA, RETIRADA]}}
+            rating: {$ref: '#/components/schemas/RatingSummary'}
+            updatedAt: {$ref: '#/components/schemas/DateTime'}
+            address: {type: string, description: Solo se incluye si la política RF-53 lo autoriza}
+    RatingSummary:
+      type: object
+      required: [average, count]
+      properties:
+        average: {type: number, minimum: 0, maximum: 5}
+        count: {type: integer, minimum: 0}
+        dimensions: {type: object, additionalProperties: {type: number, minimum: 0, maximum: 5}}
+    RequestCreate:
+      type: object
+      required: [expectedOutcome, trade, approximateZone]
+      properties:
+        expectedOutcome: {type: string, minLength: 1}
+        trade: {type: string}
+        approximateZone: {type: string, minLength: 1}
+        desiredDate: {type: string, format: date}
+        description: {type: string}
+        aiConversationId: {$ref: '#/components/schemas/Uuid'}
+        manualCapture: {type: boolean, default: false}
+    RequestPatch:
+      type: object
+      minProperties: 1
+      properties:
+        description: {type: string}
+        dimensions: {type: string}
+        materials: {type: string}
+        summaryConfirmed: {type: boolean}
+        desiredDate: {type: string, format: date}
+        address: {type: string, description: Solo se acepta en el momento autorizado por RF-52}
+    ServiceRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestCreate'
+        - type: object
+          required: [id, status, createdAt, updatedAt]
+          properties:
+            id: {$ref: '#/components/schemas/Uuid'}
+            status: {$ref: '#/components/schemas/ProjectStatus'}
+            selectedProviderId: {$ref: '#/components/schemas/Uuid'}
+            createdAt: {$ref: '#/components/schemas/DateTime'}
+            updatedAt: {$ref: '#/components/schemas/DateTime'}
+    ProjectStatus: {type: string, enum: [BORRADOR, CONFIRMADA, PROGRAMADO, EN_PROCESO, TERMINADO, CONCLUIDO]}
+    SearchRequest:
+      type: object
+      properties:
+        verifiedOnly: {type: boolean}
+        similarExperience: {type: boolean}
+        sort: {type: string, enum: [rating, price, availability, proximity, guarantee]}
+        priceMin: {type: number, minimum: 0}
+        priceMax: {type: number, minimum: 0}
+        includeWithoutComparablePrice: {type: boolean, default: false}
+    SearchResponse:
+      type: object
+      required: [items, recommendations, page]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/Provider'}}
+        recommendations: {type: array, maxItems: 4, items: {$ref: '#/components/schemas/Recommendation'}}
+        noResultsMessage: {type: string}
+        page: {$ref: '#/components/schemas/PageInfo'}
+    Recommendation:
+      type: object
+      required: [provider, explanation]
+      properties:
+        provider: {$ref: '#/components/schemas/Provider'}
+        explanation: {type: string}
+        criteria: {type: array, items: {type: string}}
+    AppointmentCreate:
+      type: object
+      required: [requestId, startsAt, endsAt, costMxn, confirmedByProvider]
+      properties:
+        requestId: {$ref: '#/components/schemas/Uuid'}
+        startsAt: {$ref: '#/components/schemas/DateTime'}
+        endsAt: {$ref: '#/components/schemas/DateTime'}
+        costMxn: {type: number, minimum: 0}
+        confirmedByProvider: {type: boolean}
+        isVisit: {type: boolean}
+    AppointmentPatch:
+      type: object
+      minProperties: 1
+      properties:
+        startsAt: {$ref: '#/components/schemas/DateTime'}
+        endsAt: {$ref: '#/components/schemas/DateTime'}
+        confirmedByClient: {type: boolean}
+        confirmedByProvider: {type: boolean}
+        reason: {type: string}
+    Appointment:
+      allOf:
+        - $ref: '#/components/schemas/AppointmentCreate'
+        - type: object
+          required: [id, status, expiresAt]
+          properties:
+            id: {$ref: '#/components/schemas/Uuid'}
+            status: {type: string, enum: [PENDIENTE, CONFIRMADA, EXPIRADA, CANCELADA]}
+            expiresAt: {$ref: '#/components/schemas/DateTime'}
+    CancelRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason: {type: string, minLength: 1}
+    ProposalCreate:
+      type: object
+      required: [requestId, workDescription, laborSubtotalMxn, materials, additionalCostsMxn, totalMxn]
+      properties:
+        requestId: {$ref: '#/components/schemas/Uuid'}
+        workDescription: {type: string, minLength: 1}
+        dates: {type: array, items: {type: string, format: date}}
+        laborSubtotalMxn: {type: number, minimum: 0}
+        materials: {type: array, items: {$ref: '#/components/schemas/Material'}}
+        additionalCostsMxn: {type: number, minimum: 0}
+        totalMxn: {type: number, minimum: 0}
+    Material:
+      type: object
+      required: [description, quantity, unit, unitPriceMxn, subtotalMxn]
+      properties:
+        description: {type: string}
+        quantity: {type: number, exclusiveMinimum: 0}
+        unit: {type: string}
+        unitPriceMxn: {type: number, minimum: 0}
+        subtotalMxn: {type: number, minimum: 0}
+        brandOrQuality: {type: string}
+    Proposal:
+      allOf:
+        - $ref: '#/components/schemas/ProposalCreate'
+        - type: object
+          required: [id, version, status, issuedAt, expiresAt]
+          properties:
+            id: {$ref: '#/components/schemas/Uuid'}
+            version: {type: integer, minimum: 1}
+            status: {type: string, enum: [ENVIADA, ACEPTADA, NEGOCIACION, RECHAZADA, EXPIRADA]}
+            issuedAt: {$ref: '#/components/schemas/DateTime'}
+            expiresAt: {$ref: '#/components/schemas/DateTime'}
+    ProposalDecision:
+      type: object
+      required: [decision]
+      properties:
+        decision: {type: string, enum: [ACEPTAR, PEDIR_CAMBIOS, RECHAZAR]}
+        comment: {type: string}
+    ChangeCreate:
+      type: object
+      required: [requestId, type, reason, amountDeltaMxn, updatedTotalMxn, affectedItems, proposedDate]
+      properties:
+        requestId: {$ref: '#/components/schemas/Uuid'}
+        type: {type: string, enum: [COSTO, MATERIAL, ALCANCE, FECHA]}
+        reason: {type: string, minLength: 1}
+        amountDeltaMxn: {type: number}
+        updatedTotalMxn: {type: number, minimum: 0}
+        affectedItems: {type: array, minItems: 1, items: {type: string}}
+        proposedDate: {type: string, format: date}
+        initiatedBy: {type: string, enum: [CLIENTE, PROVEEDOR]}
+    Change:
+      allOf:
+        - $ref: '#/components/schemas/ChangeCreate'
+        - type: object
+          required: [id, status, createdAt, expiresAt]
+          properties:
+            id: {$ref: '#/components/schemas/Uuid'}
+            status: {type: string, enum: [PENDIENTE, ACEPTADO, RECHAZADO, NO_ACEPTADO, EXPIRADO]}
+            createdAt: {$ref: '#/components/schemas/DateTime'}
+            expiresAt: {$ref: '#/components/schemas/DateTime'}
+            aiAnalysis: {type: string, description: Informativo; nunca decide por el usuario}
+    ChangeDecision:
+      type: object
+      required: [decision]
+      properties:
+        decision: {type: string, enum: [ACEPTAR, RECHAZAR, CONTRAPROPONER]}
+        updatedTerms: {$ref: '#/components/schemas/ChangeCreate'}
+    Message:
+      type: object
+      required: [id, content, senderId, sentAt]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        content: {type: string}
+        senderId: {$ref: '#/components/schemas/Uuid'}
+        sentAt: {$ref: '#/components/schemas/DateTime'}
+    EvaluationCreate:
+      type: object
+      required: [subjectType, score]
+      properties:
+        subjectType: {type: string, enum: [PROVEEDOR, CLIENTE]}
+        punctuality: {type: integer, minimum: 1, maximum: 5}
+        quality: {type: integer, minimum: 1, maximum: 5}
+        cleanliness: {type: integer, minimum: 1, maximum: 5}
+        budgetAdherence: {type: integer, minimum: 1, maximum: 5}
+        score: {type: integer, minimum: 1, maximum: 5}
+        comment: {type: string}
+    Evaluation:
+      allOf:
+        - $ref: '#/components/schemas/EvaluationCreate'
+        - type: object
+          required: [id, status, createdAt]
+          properties:
+            id: {$ref: '#/components/schemas/Uuid'}
+            status: {type: string, enum: [PENDIENTE, PUBLICADA, VENCIDA]}
+            createdAt: {$ref: '#/components/schemas/DateTime'}
+    FileUploadRequest:
+      type: object
+      required: [fileName, contentType, sizeBytes, objectKey]
+      properties:
+        fileName: {type: string}
+        contentType: {type: string, enum: [image/jpeg, image/png, video/mp4]}
+        sizeBytes: {type: integer, minimum: 1, maximum: 5242880}
+        objectKey: {type: string, description: Clave interna; no es una URL pública}
+    File:
+      type: object
+      required: [id, fileName, contentType, sizeBytes, downloadUrlExpiresAt]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        fileName: {type: string}
+        contentType: {type: string}
+        sizeBytes: {type: integer}
+        downloadUrl: {type: string, format: uri}
+        downloadUrlExpiresAt: {$ref: '#/components/schemas/DateTime'}
+    VerificationRequest:
+      type: object
+      required: [type, fileId]
+      properties:
+        type: {type: string, enum: [IDENTIDAD, EXPERIENCIA, ORGANIZACION]}
+        fileId: {$ref: '#/components/schemas/Uuid'}
+    Verification:
+      type: object
+      required: [type, status]
+      properties:
+        type: {type: string}
+        status: {type: string, enum: [PENDIENTE, VERIFICADA, RECHAZADA, RETIRADA]}
+        reason: {type: string}
+        reviewedAt: {$ref: '#/components/schemas/DateTime'}
+    SupportRequest:
+      type: object
+      required: [id, status, createdAt]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        status: {type: string, enum: [REGISTRADA, ATENDIDA]}
+        createdAt: {$ref: '#/components/schemas/DateTime'}
+    PrivacyRequestCreate:
+      type: object
+      required: [type]
+      properties:
+        type: {type: string, enum: [ACCESO, RECTIFICACION, CANCELACION, OPOSICION]}
+        correctedValues: {type: object, additionalProperties: {type: string}}
+    PrivacyRequest:
+      type: object
+      required: [folio, type, status, createdAt]
+      properties:
+        folio: {type: string}
+        type: {type: string}
+        status: {type: string, enum: [REGISTRADA, EN_PROCESO, RESPONDIDA, BLOQUEADA]}
+        createdAt: {$ref: '#/components/schemas/DateTime'}
+        respondedAt: {$ref: '#/components/schemas/DateTime'}
+    PrivacyFulfillment:
+      type: object
+      required: [action]
+      properties:
+        action: {type: string, enum: [EXPORT_JSON_PDF, RECTIFICAR, ANONIMIZAR, RESPONDER]}
+        correctedValues: {type: object, additionalProperties: {type: string}}
+        responseNote: {type: string}
+    VisualRepresentation:
+      type: object
+      required: [id, status, description, referenceFileId]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        status: {type: string, enum: [GENERANDO, DISPONIBLE, APROBADA]}
+        description: {type: string}
+        referenceFileId: {$ref: '#/components/schemas/Uuid'}
+        isTechnicalPlan: {type: boolean, const: false}
+    AiAnalysis:
+      type: object
+      required: [summary, isDecision]
+      properties:
+        summary: {type: string}
+        missingData: {type: array, items: {type: string}}
+        risks: {type: array, items: {type: string}}
+        isDecision: {type: boolean, const: false}
+    PrivateLocation:
+      type: object
+      required: [visibility]
+      properties:
+        visibility: {type: string, enum: [ZONA_APROXIMADA, DOMICILIO_AUTORIZADO, OCULTO]}
+        municipality: {type: string}
+        neighborhood: {type: string}
+        exactAddress: {type: string, description: Solo con autorización RF-52}
+        media: {type: array, items: {$ref: '#/components/schemas/File'}}
+    PageInfo:
+      type: object
+      required: [page, pageSize, totalItems, totalPages]
+      properties:
+        page: {type: integer}
+        pageSize: {type: integer}
+        totalItems: {type: integer}
+        totalPages: {type: integer}
+    ProviderPage:
+      type: object
+      required: [items, page]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/Provider'}}
+        page: {$ref: '#/components/schemas/PageInfo'}
+    RequestPage:
+      type: object
+      required: [items, page]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/ServiceRequest'}}
+        page: {$ref: '#/components/schemas/PageInfo'}
+    FilePage:
+      type: object
+      required: [items, page]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/File'}}
+        page: {$ref: '#/components/schemas/PageInfo'}
+    MessagePage:
+      type: object
+      required: [items, page]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/Message'}}
+        page: {$ref: '#/components/schemas/PageInfo'}
+    AuditLog:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [id, action, actorId, occurredAt]
+            properties:
+              id: {$ref: '#/components/schemas/Uuid'}
+              action: {type: string}
+              actorId: {$ref: '#/components/schemas/Uuid'}
+              occurredAt: {$ref: '#/components/schemas/DateTime'}
+              previousEventId: {$ref: '#/components/schemas/Uuid'}
+    AvailabilityReport:
+      type: object
+      required: [month, availabilityPercent, unplannedOutages, plannedMaintenanceNotices]
+      properties:
+        month: {type: string}
+        availabilityPercent: {type: number, minimum: 0, maximum: 100}
+        unplannedOutages: {type: array, items: {type: object, additionalProperties: true}}
+        plannedMaintenanceNotices: {type: array, items: {type: object, additionalProperties: true}}
+    Error:
+      type: object
+      required: [code, message, requestId]
+      properties:
+        code: {type: string}
+        message: {type: string}
+        requestId: {type: string}
+    ValidationError:
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - type: object
+          required: [fieldErrors]
+          properties:
+            fieldErrors:
+              type: array
+              items:
+                type: object
+                required: [field, message]
+                properties:
+                  field: {type: string}
+                  message: {type: string}

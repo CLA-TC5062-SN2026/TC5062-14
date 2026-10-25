@@ -1,0 +1,175 @@
+@startuml diagrama_er_5
+' =====================================================================
+' UnCalificado — Diagrama entidad-relación de la base de datos (MySQL 8)
+' GENERADO por generar_er.py a partir de information_schema después de
+' cargar esquema_bd.sql. No editar a mano: regenerar si cambia el SQL.
+' Notación: * = NOT NULL · <<PK>> · <<FK>> · <<UQ>> (único) ·
+' ||--o{ = uno a muchos · |o--o{ = FK opcional · ||--o| = uno a uno
+' =====================================================================
+title UnCalificado — Modelo entidad-relación · Propuestas y control de costos\n<size:11>9 tablas del módulo con todas sus columnas · en gris, tablas de otros módulos relacionadas · * = NOT NULL</size>
+hide circle
+skinparam linetype ortho
+skinparam shadowing false
+skinparam nodesep 40
+skinparam ranksep 70
+skinparam defaultFontSize 11
+skinparam class {
+  BorderColor #546E7A
+  ArrowColor #546E7A
+}
+
+package "Cuentas y privacidad" #F5F5F5 {
+  entity "usuarios" as usuarios #EEEEEE {
+    * id <<PK>>
+  }
+}
+
+package "Proveedores y verificación" #F5F5F5 {
+  entity "proveedores" as proveedores #EEEEEE {
+    * id <<PK>>
+  }
+}
+
+package "Solicitud y agente de IA" #F5F5F5 {
+  entity "solicitudes" as solicitudes #EEEEEE {
+    * id <<PK>>
+  }
+  entity "adjuntos" as adjuntos #EEEEEE {
+    * id <<PK>>
+  }
+}
+
+package "Propuestas y control de costos" #FBE9E7 {
+  entity "propuestas" as propuestas {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+    * proveedor_id : CHAR(36) <<FK>>
+    * estado : ENUM(4)
+    * plazo_acuerdo_vence_en : DATETIME
+  }
+  entity "versiones_propuesta" as versiones_propuesta {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * propuesta_id : CHAR(36) <<FK>>
+    * numero : SMALLINT↑
+    * trabajo : VARCHAR(4000)
+    * fecha_inicio : DATE
+    * fecha_fin : DATE
+    * total : DECIMAL(12,2)
+    * estado : ENUM(6)
+      ajuste_solicitado : VARCHAR(2000)
+      aceptada_en : DATETIME
+  }
+  entity "conceptos_propuesta" as conceptos_propuesta {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * version_propuesta_id : CHAR(36) <<FK>>
+    * categoria : ENUM(3)
+    * descripcion : VARCHAR(500)
+    * subtotal : DECIMAL(12,2)
+      cantidad : DECIMAL(10,3)
+      unidad : VARCHAR(30)
+      precio_unitario : DECIMAL(12,2)
+      marca_o_calidad : VARCHAR(120)
+  }
+  entity "cambios" as cambios {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+    * iniciado_por : ENUM('PROVEEDOR','CLIENTE')
+    * tipo : ENUM('COSTO','MATERIAL','ALCANCE','FECHA')
+    * motivo : VARCHAR(2000)
+    * monto_ajuste : DECIMAL(12,2)
+    * presupuesto_actualizado : DECIMAL(12,2)
+      elementos_afectados : JSON
+      fecha_propuesta : DATE
+    * necesario_para_continuar : BOOLEAN
+    * estado : ENUM(6)
+    * vence_en : DATETIME
+    * parte_afectada_en_pausa : BOOLEAN
+    * pendiente_nuevo_acuerdo : BOOLEAN
+  }
+  entity "cambio_evidencias" as cambio_evidencias {
+    * **cambio_id** : CHAR(36) <<PK>> <<FK>>
+    * **adjunto_id** : CHAR(36) <<PK>> <<FK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+  }
+  entity "contrapropuestas" as contrapropuestas {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * cambio_id : CHAR(36) <<FK>>
+    * monto_adicional : DECIMAL(12,2)
+    * presupuesto_actualizado : DECIMAL(12,2)
+      fecha_propuesta : DATE
+      comentario : VARCHAR(2000)
+    * estado : ENUM(4)
+    * vence_en : DATETIME
+  }
+  entity "analisis_ia" as analisis_ia {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * cambio_id : CHAR(36) <<FK>> <<UQ>>
+    * consistencias : JSON
+    * datos_faltantes : JSON
+    * riesgos : JSON
+  }
+  entity "versiones_presupuesto" as versiones_presupuesto {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+    * numero : SMALLINT↑
+    * total_anterior : DECIMAL(12,2)
+    * total_actualizado : DECIMAL(12,2)
+    * diferencia_contra_inicial : DECIMAL(12,2)
+      version_propuesta_id : CHAR(36) <<FK>> <<UQ>>
+      cambio_id : CHAR(36) <<FK>> <<UQ>>
+  }
+  entity "registros_bitacora" as registros_bitacora {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+    * autor_id : CHAR(36) <<FK>>
+    * entidad : ENUM('PROPUESTA','CAMBIO')
+      version_propuesta_id : CHAR(36) <<FK>>
+      cambio_id : CHAR(36) <<FK>>
+    * decision : ENUM(5)
+      anterior_id : CHAR(36) <<FK>> <<UQ>>
+      corrige_registro_id : CHAR(36) <<FK>>
+    * hash_encadenado : CHAR(64) <<UQ>>
+  }
+}
+
+' ── Relaciones (una por FK; las FK compuestas con columna de rol generada
+'    se dibujan con su columna real) ──
+cambios ||--o| analisis_ia : cambio_id
+adjuntos ||--o{ cambio_evidencias : solicitud_id, adjunto_id
+cambios ||--o{ cambio_evidencias : solicitud_id, cambio_id
+solicitudes ||--o{ cambios : solicitud_id
+versiones_propuesta ||--o{ conceptos_propuesta : version_propuesta_id
+cambios ||--o{ contrapropuestas : cambio_id
+proveedores ||--o{ propuestas : proveedor_id
+solicitudes ||--o{ propuestas : solicitud_id
+registros_bitacora |o--o{ registros_bitacora : solicitud_id, anterior_id
+usuarios ||--o{ registros_bitacora : autor_id
+cambios |o--o{ registros_bitacora : solicitud_id, cambio_id
+registros_bitacora |o--o{ registros_bitacora : solicitud_id, corrige_registro_id
+solicitudes ||--o{ registros_bitacora : solicitud_id
+versiones_propuesta |o--o{ registros_bitacora : version_propuesta_id
+cambios |o--o{ versiones_presupuesto : solicitud_id, cambio_id
+solicitudes ||--o{ versiones_presupuesto : solicitud_id
+versiones_propuesta |o--o| versiones_presupuesto : version_propuesta_id
+propuestas ||--o{ versiones_propuesta : propuesta_id
+
+legend right
+  |= Símbolo |= Significado |
+  | * columna | NOT NULL |
+  | <<PK>> / <<FK>> / <<UQ>> | llave primaria / foránea / única |
+  | línea con doble barra → pata de gallo | uno (FK obligatoria) a muchos |
+  | línea con círculo y barra → pata de gallo | cero o uno (FK opcional) a muchos |
+  | línea con doble barra → círculo y barra | uno a cero o uno (FK única) |
+  | ENUM(n) | enumeración de n valores (ver esquema_bd.sql) |
+  | ↑ | UNSIGNED |
+endlegend
+@enduml

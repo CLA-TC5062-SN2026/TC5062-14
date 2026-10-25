@@ -1,0 +1,388 @@
+@startuml clases_01_dominio
+' Diagrama de clases del dominio — UnCalificado
+' Fuentes: openapi.yaml v0.2.0 (components/schemas), db/schema.sql y SRS_equipo.md
+' <<implementado>> (verde) = existe como tabla en schema.sql y en el backend.
+' El resto está definido por el contrato y el SRS, pendiente de implementar.
+
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+skinparam linetype polyline
+skinparam nodesep 30
+skinparam ranksep 50
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #546E7A
+  BackgroundColor<<implementado>> #E8F5E9
+  BorderColor<<implementado>> #2E7D32
+  BackgroundColor<<valor>> #F5F5F5
+}
+hide empty methods
+
+title UnCalificado — Diagrama de clases del dominio (verde = implementado)
+
+package "Cuentas y privacidad (RF-01, RF-02, RF-54)" {
+  enum Rol {
+    cliente
+    trabajador
+    organizacion
+    administrador
+  }
+  class Usuario <<implementado>> {
+    id : UUID
+    nombre : String
+    correo : String {unique}
+    contrasenaHash : String (bcrypt)
+    rol : Rol
+    declaraMayorEdad : Boolean
+    activo : Boolean
+    creadoEn : DateTime
+  }
+  class AvisoPrivacidad <<implementado>> {
+    version : Integer {PK}
+    contenido : Text
+    publicadoEn : DateTime
+  }
+  class Consentimiento <<implementado>> {
+    id : UUID
+    versionAviso : Integer
+    aceptadoEn : DateTime
+  }
+  class SolicitudArco {
+    folio : String
+    tipo : acceso | rectificacion | cancelacion | oposicion
+    registradaEn : DateTime
+    fechaLimite : Date
+    porVencer : Boolean
+    respuesta : String
+  }
+  class Notificacion {
+    id : UUID
+    tipo : TipoNotificacion
+    titulo : String
+    leida : Boolean
+    creadaEn : DateTime
+  }
+}
+
+package "Proveedores y verificación (RF-03 a RF-12)" {
+  abstract class PerfilProveedor {
+    modalidad : trabajador | organizacion
+    oficios : Oficio[1..*]
+    cobertura : String[] (colonias)
+    rangoPrecioReferencia : RangoPrecio
+    garantia : String
+    visibleEnBusquedas : Boolean
+  }
+  class PerfilTrabajador {
+    fotoUrl : String
+    aniosExperiencia : Integer
+    domicilio : Domicilio
+  }
+  class PerfilOrganizacion {
+    nombreLegalOComercial : String
+    representanteContacto : String
+  }
+  class HorarioAtencion <<valor>> {
+    dias : String[]
+    horaInicio : Time
+    horaFin : Time
+  }
+  class Disponibilidad {
+    fechasNoDisponibles : Date[]
+    disponibilidadGeneral : aceptando_proyectos | sin_capacidad
+  }
+  class Franja {
+    inicio : DateTime
+    fin : DateTime
+  }
+  class FotoPortafolio {
+    id : UUID
+    url : String
+    descripcion : String
+  }
+  enum TipoVerificacion {
+    identidad
+    experiencia
+    organizacion
+  }
+  class Verificacion {
+    id : UUID
+    tipo : TipoVerificacion
+    estado : pendiente | aprobada | rechazada | retirada | vencida
+    fechaVencimiento : Date
+    motivo : String
+    resueltaEn : DateTime
+  }
+}
+
+package "Solicitud y agente de IA (RF-13 a RF-25)" {
+  enum EstadoProyecto {
+    borrador
+    confirmada
+    programado
+    en_proceso
+    terminado
+    concluido
+  }
+  enum Oficio {
+    albanileria
+    plomeria
+    electricidad
+    carpinteria
+    herreria
+    pintura
+    pisos_azulejos
+    vidrieria_canceleria
+    tablaroca
+    impermeabilizacion
+  }
+  class Solicitud <<implementado>> {
+    id : UUID
+    estado : EstadoProyecto
+    origen : manual | agente
+    resultadoEsperado : String
+    oficio : Oficio
+    tipoTrabajo : String
+    fechaDeseada : Date
+    descripcion : String
+    medidas : String
+    materiales : String
+    confirmadaEn : DateTime
+    creadaEn : DateTime
+  }
+  class Zona <<valor>> {
+    municipio : Municipio
+    colonia : String
+  }
+  class Domicilio <<valor>> {
+    calle : String
+    numeroExterior : String
+    colonia : String
+    municipio : Municipio
+    codigoPostal : String
+  }
+  class ResumenSolicitud <<valor>> {
+    resultadoEsperado : String
+    oficio : Oficio
+    fechaDeseada : Date
+    medidas : ValorDesconocible
+    condicionesEspacio : ValorDesconocible
+    compradorMateriales : String
+  }
+  class Conversacion {
+    id : UUID
+    esAsistenteAutomatico : Boolean = true
+    aclaracionesRealizadas : Integer [0..2]
+    correccionesConsecutivas : Integer [0..2]
+    creadaEn : DateTime
+  }
+  class MensajeConversacion {
+    id : UUID
+    emisor : cliente | agente
+    contenido : String
+    enviadoEn : DateTime
+  }
+  class Adjunto {
+    id : UUID
+    tipo : imagen | video
+    mime : String
+    tamanoBytes : Integer
+    esDelDomicilio : Boolean
+  }
+  class RepresentacionVisual {
+    id : UUID
+    descripcion : String
+    imagenUrl : String
+    aprobada : Boolean
+    leyenda : "no es plano técnico"
+  }
+  class CasoSoporte <<implementado>> {
+    id : UUID
+    motivo : agente_no_comprende | oficio_no_clasificado | ia_no_resolvio | otro
+    comentario : String
+    resumenConversacion : String (contrato; aún no en BD)
+    estado : pendiente | en_atencion | resuelto
+    notas : String
+    creadoEn : DateTime
+  }
+}
+
+package "Búsqueda, invitación y citas (RF-26 a RF-37)" {
+  class ConjuntoRecomendaciones {
+    id : UUID
+    menosOpcionesDeLasHabituales : Boolean
+    generadaEn : DateTime
+  }
+  class Recomendacion {
+    explicacion : String
+  }
+  class Invitacion {
+    id : UUID
+    estado : pendiente | aceptada | rechazada | expirada
+    venceEn : DateTime (4 h hábiles)
+    respondidaEn : DateTime
+  }
+  class Cita {
+    id : UUID
+    tipo : visita_valoracion | ejecucion
+    estado : pendiente | confirmada | cancelada | expirada | rechazada
+    inicio : DateTime
+    fin : DateTime
+    costo : Monto | sinCosto
+    confirmadaPorProveedorEn : DateTime
+    confirmadaPorClienteEn : DateTime
+    expiraEn : DateTime (24 h)
+  }
+  class ModificacionCita {
+    tipo : cancelacion | cambio_fecha | retraso | reprogramacion
+    motivo : String
+    solicitadaEn : DateTime
+  }
+}
+
+package "Propuestas y control de costos (RF-38 a RF-44, RF-55)" {
+  class Propuesta {
+    id : UUID
+    version : Integer
+    trabajo : String
+    fechaInicio : Date
+    fechaFin : Date
+    total : Monto
+    estado : enviada | ajuste_solicitado | sustituida | aceptada | rechazada | expirada
+    plazoAcuerdoVenceEn : DateTime (72 h)
+  }
+  class ConceptoPropuesta <<valor>> {
+    descripcion : String
+    subtotal : Monto
+  }
+  class MaterialPropuesta <<valor>> {
+    descripcion : String
+    cantidad : Number
+    unidad : String
+    precioUnitario : Monto
+    subtotal : Monto
+  }
+  class Cambio {
+    id : UUID
+    tipo : costo | material | alcance | fecha
+    iniciadoPor : proveedor | cliente
+    motivo : String
+    montoAdicional : MontoConSigno
+    presupuestoActualizado : Monto
+    estado : EstadoCambio
+    decisionVenceEn : DateTime (24 h)
+    parteAfectadaEnPausa : Boolean
+  }
+  class AnalisisIA {
+    consistencias : String[]
+    datosFaltantes : String[]
+    riesgos : String[]
+    aviso : "no decide"
+  }
+  class VersionPresupuesto {
+    version : Integer
+    totalAnterior : Monto
+    totalActualizado : Monto
+    diferenciaContraInicial : MontoConSigno
+    esInicial : Boolean
+  }
+  class RegistroBitacora {
+    id : UUID
+    entidad : propuesta | cambio
+    decision : aceptacion | rechazo | contrapropuesta | ajuste_solicitado | expiracion
+    fecha : DateTime
+    hashEncadenado : String
+  }
+}
+
+package "Seguimiento, mensajes y evaluaciones (RF-45 a RF-51)" {
+  class MensajeCanal {
+    id : UUID
+    emisorRol : Rol
+    contenido : String
+    enviadoEn : DateTime
+  }
+  class Evaluacion {
+    id : UUID
+    direccion : cliente_a_proveedor | proveedor_a_cliente
+    calificacion : Number [1..5]
+    comentario : String
+    publicada : Boolean
+    publicadaEn : DateTime
+  }
+  class DimensionesEvaluacion <<valor>> {
+    puntualidad : Integer [1..5]
+    calidad : Integer [1..5]
+    limpieza : Integer [1..5]
+    apegoPresupuesto : Integer [1..5]
+  }
+}
+
+' ── Relaciones: cuentas y privacidad ──
+Usuario "1" *-- "0..*" Consentimiento : otorga >
+Consentimiento "0..*" --> "1" AvisoPrivacidad : acepta >
+Usuario --> Rol
+Usuario "1" -- "0..*" SolicitudArco : presenta >
+Usuario "1" -- "0..*" Notificacion : recibe >
+
+' ── Proveedores ──
+PerfilProveedor <|-- PerfilTrabajador
+PerfilProveedor <|-- PerfilOrganizacion
+Usuario "1" -- "0..1" PerfilProveedor : es proveedor con >
+PerfilProveedor *-- "1" HorarioAtencion
+PerfilProveedor *-- "1" Disponibilidad
+Disponibilidad *-- "0..*" Franja : bloqueadas
+PerfilTrabajador *-- "0..*" FotoPortafolio : portafolio
+PerfilProveedor "1" *-- "0..*" Verificacion
+Verificacion --> TipoVerificacion
+
+' ── Solicitud y agente ──
+Usuario "1" -- "0..*" Solicitud : cliente >
+Solicitud "0..*" -- "0..1" Usuario : proveedor asociado >
+Solicitud --> EstadoProyecto
+Solicitud --> Oficio
+Solicitud *-- "1" Zona
+Solicitud *-- "1" ResumenSolicitud : resumen / resumenConfirmado
+Solicitud o-- "0..1" Domicilio : revelado (RF-52)
+Solicitud "1" *-- "0..10" Adjunto : imágenes
+Solicitud "1" *-- "0..*" RepresentacionVisual
+Solicitud "1" -- "0..1" Conversacion : originada por >
+Conversacion "1" *-- "1..*" MensajeConversacion
+MensajeConversacion o-- "0..*" Adjunto
+Usuario "1" -- "0..*" CasoSoporte : abre >
+CasoSoporte "0..*" --> "0..1" Solicitud : relativo a >
+CasoSoporte "0..*" --> "0..1" Usuario : atendidoPor (administrador) >
+
+' ── Búsqueda y citas ──
+Solicitud "1" *-- "0..*" ConjuntoRecomendaciones
+ConjuntoRecomendaciones *-- "0..4" Recomendacion
+Recomendacion --> "1" PerfilProveedor
+Solicitud "1" *-- "0..*" Invitacion
+Invitacion "0..*" --> "1" PerfilProveedor : dirigida a >
+Solicitud "1" *-- "0..*" Cita
+Cita "0..*" --> "1" PerfilProveedor
+Cita *-- "0..*" ModificacionCita
+Cita "0..*" ..> "0..1" Propuesta : ejecución requiere aceptada
+
+' ── Propuestas y costos ──
+Solicitud "1" *-- "0..*" Propuesta
+Propuesta *-- "1..*" ConceptoPropuesta : manoDeObra / costosAdicionales
+Propuesta *-- "0..*" MaterialPropuesta
+Propuesta "0..1" --> "0..1" Propuesta : revisa >
+Solicitud "1" *-- "0..*" Cambio
+Cambio *-- "0..1" AnalisisIA
+Solicitud "1" *-- "1..*" VersionPresupuesto : historial
+VersionPresupuesto "0..*" --> "0..1" Cambio : originada por >
+RegistroBitacora "0..*" ..> Propuesta : registra decisión
+RegistroBitacora "0..*" ..> Cambio : registra decisión
+RegistroBitacora "0..*" --> "1" Usuario : autor >
+
+' ── Seguimiento y evaluaciones ──
+Solicitud "1" *-- "0..*" MensajeCanal : canal interno (con cita confirmada)
+Solicitud "1" *-- "0..2" Evaluacion
+Evaluacion *-- "0..1" DimensionesEvaluacion : solo cliente → proveedor
+Evaluacion --> "1" Usuario : evaluador
+Evaluacion --> "1" Usuario : evaluado
+
+@enduml

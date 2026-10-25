@@ -1,0 +1,60 @@
+@startuml
+title UnCalificado - C4 Container Level: componentes y contenedores
+left to right direction
+skinparam componentStyle rectangle
+
+actor "Cliente / Proveedor / Administrador" as User
+rectangle "Cliente" {
+  component "Web responsive\nBrowser" as Web
+  component "App nativa" as Mobile
+}
+
+rectangle "Cloud de producción" {
+  component "Frontend estático\nCDN + hosting" as Frontend
+  component "API Gateway\nHTTPS + rate limit" as Gateway
+  component "Autenticación\nJWT + MFA admin" as Auth
+  component "Lambda: identidad y usuarios" as Identity
+  component "Lambda: proveedores" as Providers
+  component "Lambda: solicitudes + IA" as Requests
+  component "Lambda: contratación" as Contracting
+  component "Lambda: comunicación y evaluaciones" as Collaboration
+  component "Lambda: privacidad y administración" as Privacy
+  database "PostgreSQL\nentidades, estados,\nmetadatos y bitácora" as Postgres
+  component "Object storage\nimágenes, videos y documentos" as Objects
+  component "Scheduler\nexpiraciones y recordatorios" as Scheduler
+}
+
+cloud "Servicios externos" {
+  component "Proveedor de IA\nclasificación y análisis" as ExternalAI
+}
+
+User --> Web : usa HTTPS
+User --> Mobile : usa HTTPS
+Web --> Frontend : carga aplicación
+Mobile --> Gateway : JSON/HTTPS
+Frontend --> Gateway : JSON/HTTPS
+Gateway --> Auth : valida Bearer JWT
+Gateway --> Identity : enruta /auth, /users
+Gateway --> Providers : enruta /providers
+Gateway --> Requests : enruta /requests
+Gateway --> Contracting : enruta citas, propuestas, cambios
+Gateway --> Collaboration : enruta mensajes y evaluaciones
+Gateway --> Privacy : enruta archivos, domicilio y ARCO
+Identity --> Postgres : SQL con privilegio mínimo
+Providers --> Postgres : SQL con privilegio mínimo
+Requests --> Postgres : SQL transaccional
+Contracting --> Postgres : estados y bitácora
+Collaboration --> Postgres : mensajes y evaluaciones
+Privacy --> Postgres : permisos y metadatos
+Requests --> ExternalAI : API adaptada
+Privacy --> Objects : URLs temporales
+Requests --> Objects : URLs temporales
+Scheduler --> Postgres : procesos idempotentes
+
+note right of Objects
+  El cliente nunca recibe
+  credenciales del bucket.
+  Solo se entregan URLs temporales
+  después de validar rol y propiedad.
+end note
+@enduml

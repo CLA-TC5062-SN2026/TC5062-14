@@ -1,0 +1,11 @@
+{
+ "info":{"name":"UnCalificado - CRUD Casos Soporte (demostración)","schema":"https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},
+ "variable":[{"key":"baseUrl","value":"http://127.0.0.1:5000/api/v1"},{"key":"casoId","value":""},{"key":"clienteId","value":"11111111-1111-4111-8111-111111111111"}],
+ "item":[
+  {"name":"01 POST crear caso","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"},{"key":"X-Demo-User-Id","value":"{{clienteId}}"}],"body":{"mode":"raw","raw":"{\"motivo\":\"otro\",\"comentario\":\"Prueba de persistencia\"}"},"url":"{{baseUrl}}/casos-soporte"},"event":[{"listen":"test","script":{"exec":["pm.test('201',()=>pm.response.to.have.status(201));","pm.collectionVariables.set('casoId',pm.response.json().id);"]}}]},
+  {"name":"02 GET consultar caso","request":{"method":"GET","header":[{"key":"X-Demo-User-Id","value":"{{clienteId}}"}],"url":"{{baseUrl}}/casos-soporte/{{casoId}}"},"event":[{"listen":"test","script":{"exec":["pm.test('200 y persistencia',()=>{pm.response.to.have.status(200);pm.expect(pm.response.json().comentario).to.eql('Prueba de persistencia')});"]}}]},
+  {"name":"03 GET listar casos","request":{"method":"GET","header":[{"key":"X-Demo-User-Id","value":"{{clienteId}}"}],"url":"{{baseUrl}}/casos-soporte"}},
+  {"name":"04 PATCH actualizar caso","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"},{"key":"X-Demo-User-Id","value":"{{clienteId}}"}],"body":{"mode":"raw","raw":"{\"estado\":\"en_atencion\",\"notas\":\"Atendido en demostración\"}"},"url":"{{baseUrl}}/casos-soporte/{{casoId}}"}},
+  {"name":"05 DELETE eliminar caso","request":{"method":"DELETE","header":[{"key":"X-Demo-User-Id","value":"{{clienteId}}"}],"url":"{{baseUrl}}/casos-soporte/{{casoId}}"}}
+ ]
+}

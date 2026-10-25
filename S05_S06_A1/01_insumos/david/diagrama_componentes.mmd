@@ -1,0 +1,25 @@
+flowchart LR
+  subgraph CLIENTES[Canales de acceso]
+    WEB[Web responsive]
+    APP[App móvil nativa]
+  end
+  subgraph CLOUD[UnCalificado - backend modular]
+    API[API REST /api/v1 + JWT]
+    CORE[Servicios de aplicación y dominio]
+    AIAD[Adaptador de IA]
+    WORK[Worker de notificaciones]
+    API --> CORE
+    CORE --> AIAD
+    CORE --> WORK
+  end
+  subgraph DATOS[Persistencia privada]
+    DB[(PostgreSQL)]
+    OBJ[(Objetos multimedia)]
+  end
+  EXT[Proveedor externo de IA]
+  WEB -->|HTTPS JSON| API
+  APP -->|HTTPS JSON| API
+  CORE -->|SQL transaccional| DB
+  CORE -->|Archivos y evidencias| OBJ
+  WORK -->|Jobs y bitácora| DB
+  AIAD -->|HTTPS| EXT

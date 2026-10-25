@@ -1,0 +1,96 @@
+classDiagram
+  direction LR
+  class Cuenta {
+    +UUID id
+    +string email
+    +string passwordHash
+    +Rol rol
+    +EstadoCuenta estado
+  }
+  class Cliente {
+    +UUID id
+    +string nombre
+    +string zona
+  }
+  class Proveedor {
+    <<abstract>>
+    +UUID id
+    +string zonaCobertura
+    +bool disponible
+    +EstadoVerificacion verificacion
+  }
+  class Trabajador {
+    +string oficio
+    +int experienciaAnios
+  }
+  class Organizacion {
+    +string razonSocial
+    +string contacto
+  }
+  class Proyecto {
+    +UUID id
+    +string descripcion
+    +string zona
+    +EstadoProyecto estado
+  }
+  class Mensaje {
+    +UUID id
+    +string contenido
+    +datetime creadoEn
+  }
+  class Cita {
+    +UUID id
+    +datetime inicio
+    +EstadoCita estado
+    +bool aceptaCliente
+    +bool aceptaProveedor
+  }
+  class Propuesta {
+    +UUID id
+    +int version
+    +decimal costoTotal
+    +EstadoPropuesta estado
+  }
+  class Cambio {
+    +UUID id
+    +TipoCambio tipo
+    +decimal deltaCosto
+    +EstadoCambio estado
+  }
+  class Autorizacion {
+    +UUID id
+    +string accion
+    +datetime autorizadaEn
+  }
+  class Evaluacion {
+    +UUID id
+    +int calificacion
+    +string comentario
+  }
+  class EventoAuditoria {
+    +UUID id
+    +string tipo
+    +datetime ocurridoEn
+  }
+  class Archivo {
+    +UUID id
+    +string rutaPrivada
+    +string tipoMime
+  }
+  Proveedor <|-- Trabajador
+  Proveedor <|-- Organizacion
+  Cuenta "1" --> "0..1" Cliente : perfil
+  Cuenta "1" --> "0..1" Proveedor : administra
+  Cliente "1" --> "0..*" Proyecto : solicita
+  Proyecto "1" *-- "0..*" Mensaje : conversación
+  Proyecto "1" *-- "0..*" Archivo : evidencia
+  Proyecto "1" --> "0..1" Proveedor : elegido
+  Proyecto "1" *-- "0..*" Cita : agenda
+  Cita "0..*" --> "1" Proveedor : convocado
+  Proyecto "1" *-- "0..*" Propuesta : versiones
+  Propuesta "1" *-- "0..*" Cambio : cambios
+  Cambio "0..1" --> "1" Autorizacion : aprobación
+  Proyecto "1" *-- "0..*" Autorizacion : decisiones
+  Proyecto "1" *-- "0..2" Evaluacion : evaluaciones
+  Evaluacion "1" --> "1" Cuenta : autor
+  Proyecto "1" *-- "0..*" EventoAuditoria : bitácora

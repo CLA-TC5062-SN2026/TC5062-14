@@ -1,0 +1,337 @@
+@startuml diagrama_clases
+' =====================================================================
+' UnCalificado — Diagrama de clases del dominio (MVP)
+' Fuente funcional: S03_A1/SRS_equipo.md (RF-01 a RF-55).
+' Modelo derivado y revisado contra los requerimientos consolidados.
+' Conserva solo los atributos importantes y notas breves para que el
+' diagrama sea legible; las
+' reglas detalladas y las decisiones de modelado están en decision_arquitectonica.md.
+' Modelo conceptual: no representa tablas ni clases técnicas.
+' =====================================================================
+
+title UnCalificado — Diagrama de clases del dominio (MVP)\n<size:11>Fuente: SRS_equipo.md · 30 clases principales</size>
+
+hide empty members
+hide circle
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam nodesep 40
+skinparam ranksep 55
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #555555
+}
+skinparam note {
+  BackgroundColor #FFFBE6
+  BorderColor #C9B458
+}
+
+' ---------------------------------------------------------------------
+package "Cuentas y privacidad" {
+  ' RF-01, RF-54, RNF-11, RD-15
+  abstract class Usuario {
+    nombre : Texto
+    telefono : Texto
+  }
+  ' RF-01
+  class Cliente
+  ' RF-01-AC-3, RNF-11, RD-11
+  class Administrador {
+    segundoFactor : Booleano
+  }
+  ' RF-02
+  class ConsentimientoPrivacidad {
+    versionAviso : Texto
+    fechaHora : FechaHora
+    declaraMayorDeEdad : Booleano
+  }
+  ' RF-54
+  class SolicitudARCO {
+    folio : Texto
+    derecho : DerechoARCO
+    fechaRespuesta : Fecha [0..1]
+  }
+  ' RF-52, RF-24-AC-3, RD-15
+  class RevelacionDomicilio {
+    disparador : DisparadorRevelacion
+    fechaRevelacion : FechaHora
+    /accesoHasta : FechaHora
+  }
+}
+
+' ---------------------------------------------------------------------
+package "Proveedores y verificación" {
+  ' RD-01, RF-32
+  abstract class Proveedor {
+    horarioAtencion : HorarioAtencion
+  }
+  ' RF-03, RF-04, RF-06, RF-53
+  class TrabajadorIndependiente {
+    aniosExperiencia : Entero
+    fechasNoDisponibles : Fecha [0..*]
+    domicilio : Domicilio [0..1]
+  }
+  ' RF-05, RF-06-AC-3
+  class OrganizacionContratistas {
+    nombreLegalOComercial : Texto
+    disponibilidadGeneral : Texto
+  }
+  ' RF-03, RF-05, RF-07
+  class PerfilProveedor {
+    oficios : Oficio [1..*]
+    cobertura : ZonaCobertura
+    garantia : Texto [0..1]
+    /calificacionPromedio : Decimal
+  }
+  ' RF-09 a RF-12
+  class Verificacion {
+    tipo : TipoVerificacion
+    estado : EstadoVerificacion
+    fechaVencimientoDocumento : Fecha [0..1]
+  }
+}
+
+' ---------------------------------------------------------------------
+package "Solicitud y agente de IA" {
+  ' RF-14 a RF-16, RF-20, RF-21, RF-45; solicitud = proyecto (§1.3)
+  class SolicitudTrabajo {
+    resultadoEsperado : Texto
+    oficio : Oficio [0..1]
+    tipoTrabajo : Texto [0..1]
+    zonaAproximada : ZonaAproximada
+    fechaDeseada : Fecha [0..1]
+    modoCaptura : ModoCaptura
+    estado : EstadoProyecto
+    domicilioExacto : Domicilio [0..1]
+  }
+  ' RF-17, RF-18
+  class ArchivoMultimedia {
+    tipo : TipoArchivo
+    tamanoMB : Decimal
+  }
+  ' RF-13, RF-15, RF-19, RF-22
+  class ConversacionAgente {
+    preguntasAclaracionOficio : Entero
+    intentosFallidosConsecutivos : Entero
+  }
+  ' RF-14, RF-18-AC-4
+  class MensajeConversacion {
+    emisor : EmisorConversacion
+    contenido : Texto
+  }
+  ' RF-23, RD-08
+  class RepresentacionVisual {
+    aprobada : Booleano
+    leyenda : Texto = "No es plano técnico"
+  }
+  ' RF-22
+  class SolicitudSoporte {
+    origen : OrigenSoporte
+  }
+}
+
+' ---------------------------------------------------------------------
+package "Búsqueda y selección" {
+  ' RF-30, RNF-10
+  class Recomendacion {
+    explicaciones : Texto [1..4]
+    menosOpcionesDeLasHabituales : Booleano
+  }
+  ' RF-31, RF-32
+  class SeleccionProveedor {
+    estado : EstadoSeleccion
+    fechaEnvio : FechaHora
+  }
+}
+
+' ---------------------------------------------------------------------
+package "Contratación" {
+  ' RF-33 a RF-37
+  class Cita {
+    tipo : TipoCita
+    fechaHora : FechaHora
+    costo : Dinero [0..1]
+    estado : EstadoCita
+  }
+  ' RF-38, RF-39
+  class Propuesta {
+    fechaPrimeraEmision : FechaHora
+    estado : EstadoPropuesta
+  }
+  ' RF-38, RF-39
+  class VersionPropuesta {
+    numero : Entero
+    total : Dinero
+  }
+  ' RF-38-AC-2
+  class ConceptoPropuesta {
+    categoria : CategoriaConcepto
+    subtotal : Dinero
+  }
+  ' RF-43, RF-44
+  class VersionPresupuesto {
+    numero : Entero
+    totalActualizado : Dinero
+    diferenciaVsInicial : Dinero
+  }
+  ' RF-40 a RF-42, RF-55, RD-10
+  class SolicitudCambio {
+    tipo : TipoCambio
+    iniciadoPor : ParteAcuerdo
+    montoAjuste : Dinero
+    estado : EstadoCambio
+  }
+  ' RF-41-AC-6 a AC-8
+  class Contrapropuesta {
+    terminos : Texto
+    estado : EstadoContrapropuesta
+  }
+  ' RNF-12, RD-17
+  class RegistroBitacora {
+    fechaHora : FechaHora
+    decision : DecisionBitacora
+  }
+}
+
+' ---------------------------------------------------------------------
+package "Seguimiento y evaluación" {
+  ' RF-46
+  class MensajeProyecto {
+    contenido : Texto
+    fechaHora : FechaHora
+  }
+  ' RF-47, RF-48
+  class SolicitudCierre {
+    respuesta : RespuestaCierre [0..1]
+    descripcionPendientes : Texto [0..1]
+  }
+  ' RF-49 a RF-51, RD-13
+  class Evaluacion {
+    estadoSolicitud : EstadoSolicitudCalificacion
+    calificacion : Entero [0..1]
+    puntualidad : Entero [0..1]
+    publicada : Booleano
+  }
+}
+
+' =====================================================================
+' Herencia (RF-01, RD-01)
+' =====================================================================
+Usuario <|-- Cliente
+Usuario <|-- Proveedor
+Usuario <|-- Administrador
+Proveedor <|-- TrabajadorIndependiente
+Proveedor <|-- OrganizacionContratistas
+
+' =====================================================================
+' Asociaciones y composiciones
+' =====================================================================
+Usuario "1" *-- "0..*" ConsentimientoPrivacidad : otorga >
+Usuario "1" -- "0..*" SolicitudARCO : titular de >
+Administrador "0..1" -- "0..*" SolicitudARCO : atiende >
+
+Proveedor "1" *-- "1" PerfilProveedor
+Proveedor "1" -- "0..*" Verificacion : solicita >
+Verificacion "0..*" --> "0..1" Administrador : resuelta por >
+
+Cliente "1" -- "0..*" SolicitudTrabajo : solicita >
+Cliente "1" -- "0..*" ConversacionAgente : conversa >
+ConversacionAgente "1" *-- "1..*" MensajeConversacion
+MensajeConversacion "0..*" --> "0..1" SolicitudTrabajo : se refiere a >
+MensajeConversacion "0..1" --> "0..*" ArchivoMultimedia : adjunta >
+SolicitudTrabajo "1" *-- "0..*" ArchivoMultimedia
+SolicitudTrabajo "1" *-- "0..*" RepresentacionVisual
+RepresentacionVisual "0..*" --> "1..*" ArchivoMultimedia : imágenes de referencia >
+Cliente "1" -- "0..*" SolicitudSoporte : solicita >
+SolicitudSoporte "0..*" --> "0..1" SolicitudTrabajo : sobre >
+Administrador "0..1" -- "0..*" SolicitudSoporte : atiende >
+
+SolicitudTrabajo "1" *-- "0..*" Recomendacion
+Recomendacion "0..*" --> "1..4" Proveedor : sugiere >
+SolicitudTrabajo "1" *-- "0..*" SeleccionProveedor
+SeleccionProveedor "0..*" --> "1" Proveedor : dirigida a >
+SolicitudTrabajo "0..*" --> "0..1" Proveedor : /proveedor asociado >
+
+SolicitudTrabajo "1" *-- "0..*" Cita
+Cita "0..*" --> "1" Proveedor : prestador >
+SolicitudTrabajo "1" *-- "0..*" Propuesta
+Propuesta "0..*" --> "1" Proveedor : emitida por >
+Propuesta "1" *-- "1..*" VersionPropuesta
+VersionPropuesta "1" *-- "1..*" ConceptoPropuesta
+SolicitudTrabajo "1" *-- "0..*" VersionPresupuesto
+VersionPresupuesto "0..1" --> "0..1" VersionPropuesta : presupuesto inicial >
+SolicitudTrabajo "1" *-- "0..*" SolicitudCambio
+SolicitudCambio "1" *-- "0..*" Contrapropuesta
+SolicitudCambio "0..1" --> "0..1" VersionPresupuesto : genera al aceptarse >
+RegistroBitacora "0..*" --> "1" Usuario : autor >
+RegistroBitacora "0..*" --> "0..1" VersionPropuesta : decisión sobre >
+RegistroBitacora "0..*" --> "0..1" SolicitudCambio : decisión sobre >
+
+SolicitudTrabajo "1" *-- "0..*" MensajeProyecto
+MensajeProyecto "0..*" --> "1" Usuario : emisor >
+SolicitudTrabajo "1" *-- "0..*" SolicitudCierre
+SolicitudTrabajo "1" *-- "0..*" Evaluacion
+Evaluacion "0..*" --> "1" Usuario : autor >
+Evaluacion "0..*" --> "1" Usuario : evaluado >
+SolicitudTrabajo "1" *-- "0..1" RevelacionDomicilio
+RevelacionDomicilio "0..*" --> "1" TrabajadorIndependiente : revela a >
+
+' =====================================================================
+' Notas breves (correcciones del modelo; detalle en el ADR)
+' =====================================================================
+note right of SolicitudTrabajo
+  Solicitud = proyecto (§1.3). Estados (RF-45):
+  borrador → confirmada → programado →
+  en proceso → terminado → concluido.
+  oficio: categoría del catálogo (RF-15); 0..1
+  porque puede quedar vacío al clasificar.
+  tipoTrabajo: tipo declarado que exige RF-16
+  para buscar. Borrador: resultado, oficio y zona.
+end note
+
+note bottom of MensajeConversacion
+  Varias solicitudes activas por cliente
+  (RF-18-AC-4): cada mensaje se asocia
+  explícitamente a una SolicitudTrabajo.
+end note
+
+note bottom of Cita
+  TipoCita: VISITA | EJECUCION.
+  La de EJECUCION exige una
+  propuesta aceptada (RF-34-AC-6).
+end note
+
+note bottom of Contrapropuesta
+  0..* estructural; el MVP describe
+  una ronda (RF-41) como regla de
+  comportamiento, no de estructura.
+end note
+
+note bottom of Evaluacion
+  {RF-49} cliente → proveedor, 4 dimensiones 1–5
+  {RF-50} prestador → cliente, calificación 1–5
+  Se publica al calificar ambos o a los 7 días (RF-51).
+end note
+
+note bottom of RevelacionDomicilio
+  RF-52: se revela al trabajador del proyecto.
+  Para organizaciones no está definido en el SRS.
+end note
+
+note bottom of Verificacion
+  Estados del SRS: aprobada, rechazada,
+  retirada. Sin estado "en revisión".
+end note
+
+note bottom of SolicitudARCO
+  DerechoARCO incluye OPOSICION (§1.3),
+  sin operación propia en RF-54.
+end note
+
+note bottom of OrganizacionContratistas
+  disponibilidadGeneral: texto libre
+  (ejemplos de RF-06-AC-3, no un enum).
+end note
+
+@enduml

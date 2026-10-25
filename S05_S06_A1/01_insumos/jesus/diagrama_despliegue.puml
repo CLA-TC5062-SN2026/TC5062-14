@@ -1,0 +1,62 @@
+@startuml
+title UnCalificado - Diagrama de despliegue
+skinparam componentStyle rectangle
+
+node "Dispositivo del usuario" as Client {
+  artifact "Browser web" as Browser
+  artifact "App nativa" as App
+}
+
+cloud "Proveedor cloud" as Cloud {
+  node "CDN + hosting estático" as CDN {
+    artifact "Frontend web compilado" as Static
+  }
+  node "API Gateway público" as Gateway {
+    artifact "HTTPS, CORS y rate limiting" as Edge
+  }
+  node "Runtime serverless" as Runtime {
+    node "Funciones Lambda por capacidad" as Lambdas {
+      artifact "Identidad / proveedores / solicitudes" as CoreFunctions
+      artifact "Contratación / colaboración / privacidad" as DomainFunctions
+      artifact "Jobs programados" as Jobs
+    }
+  }
+  database "PostgreSQL administrado" as DB {
+    artifact "Esquema relacional\n+ migraciones versionadas" as Schema
+  }
+  folder "Object storage privado" as Bucket {
+    artifact "Imágenes, videos y documentos" as Media
+  }
+  node "Secret manager + observabilidad" as Ops {
+    artifact "Secretos, logs, métricas y requestId" as Monitoring
+  }
+}
+
+cloud "Proveedor externo" as External {
+  node "Servicio de IA" as AI
+}
+
+Browser --> CDN : HTTPS
+Browser --> Gateway : HTTPS/JSON
+App --> Gateway : HTTPS/JSON
+CDN --> Gateway : llamadas API
+Gateway --> Lambdas : invocación autenticada
+Lambdas --> DB : TLS + rol mínimo
+Lambdas --> Bucket : URLs firmadas temporales
+Lambdas --> AI : HTTPS mediante adaptador
+Jobs --> DB : expiraciones y recordatorios
+Lambdas --> Ops : logs estructurados
+Gateway --> Ops : métricas y requestId
+
+note right of DB
+  Estados comerciales,
+  relaciones, permisos,
+  metadatos y bitácora.
+end note
+
+note right of Bucket
+  Privado por defecto.
+  No hay acceso directo
+  desde Browser o App.
+end note
+@enduml

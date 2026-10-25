@@ -1,0 +1,216 @@
+@startuml diagrama_er_3
+' =====================================================================
+' UnCalificado — Diagrama entidad-relación de la base de datos (MySQL 8)
+' GENERADO por generar_er.py a partir de information_schema después de
+' cargar esquema_bd.sql. No editar a mano: regenerar si cambia el SQL.
+' Notación: * = NOT NULL · <<PK>> · <<FK>> · <<UQ>> (único) ·
+' ||--o{ = uno a muchos · |o--o{ = FK opcional · ||--o| = uno a uno
+' =====================================================================
+title UnCalificado — Modelo entidad-relación · Solicitud y agente de IA\n<size:11>8 tablas del módulo con todas sus columnas · en gris, tablas de otros módulos relacionadas · * = NOT NULL</size>
+hide circle
+skinparam linetype ortho
+skinparam shadowing false
+skinparam nodesep 40
+skinparam ranksep 70
+skinparam defaultFontSize 11
+skinparam class {
+  BorderColor #546E7A
+  ArrowColor #546E7A
+}
+
+package "Cuentas y privacidad" #F5F5F5 {
+  entity "usuarios" as usuarios #EEEEEE {
+    * id <<PK>>
+  }
+}
+
+package "Proveedores y verificación" #F5F5F5 {
+  entity "proveedores" as proveedores #EEEEEE {
+    * id <<PK>>
+  }
+  entity "oficios" as oficios #EEEEEE {
+    * clave <<PK>>
+  }
+}
+
+package "Solicitud y agente de IA" #FFF8E1 {
+  entity "solicitudes" as solicitudes {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * cliente_id : CHAR(36) <<FK>>
+      proveedor_id : CHAR(36) <<FK>>
+    * estado : ENUM(6)
+    * modo_captura : ENUM('AGENTE','MANUAL')
+    * resultado_esperado : VARCHAR(2000)
+    * oficio : VARCHAR(30) <<FK>>
+      tipo_trabajo : VARCHAR(200)
+    * zona_municipio : ENUM(6)
+    * zona_colonia : VARCHAR(120)
+      fecha_deseada : DATE
+      descripcion : VARCHAR(4000)
+      domicilio_calle : VARCHAR(150)
+      domicilio_numero_exterior : VARCHAR(20)
+      domicilio_colonia : VARCHAR(120)
+      domicilio_municipio : ENUM(6)
+      domicilio_codigo_postal : CHAR(5)
+      resumen_medidas : VARCHAR(500)
+      resumen_condiciones_espacio : VARCHAR(1000)
+      resumen_materiales : VARCHAR(1000)
+      resumen_requiere_materiales : BOOLEAN
+      resumen_comprador_materiales : ENUM('CLIENTE','PROVEEDOR','DESCONOCIDO')
+      resumen_presupuesto_cliente : DECIMAL(12,2)
+    * resumen_confirmado : BOOLEAN
+      confirmada_en : DATETIME
+  }
+  entity "historial_estados_solicitud" as historial_estados_solicitud {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+    * estado : ENUM(6)
+    * cambiado_por : CHAR(36) <<FK>>
+  }
+  entity "conversaciones" as conversaciones {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * cliente_id : CHAR(36) <<FK>>
+      solicitud_id : CHAR(36) <<FK>> <<UQ>>
+    * es_asistente_automatico : BOOLEAN
+    * aclaraciones_realizadas : TINYINT↑
+    * correcciones_consecutivas : TINYINT↑
+  }
+  entity "mensajes_conversacion" as mensajes_conversacion {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * conversacion_id : CHAR(36) <<FK>>
+    * emisor : ENUM('CLIENTE','AGENTE')
+    * contenido : TEXT
+  }
+  entity "adjuntos" as adjuntos {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+      mensaje_conversacion_id : CHAR(36) <<FK>>
+    * tipo : ENUM('IMAGEN','VIDEO')
+    * mime : ENUM(4)
+    * tamano_bytes : INT↑
+    * clave_almacenamiento : VARCHAR(255) <<UQ>>
+    * es_del_domicilio : BOOLEAN
+  }
+  entity "representaciones_visuales" as representaciones_visuales {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+    * descripcion : VARCHAR(2000)
+    * clave_imagen : VARCHAR(255)
+    * aprobada : BOOLEAN
+    * es_version_referencia : BOOLEAN
+    * leyenda : VARCHAR(40)
+  }
+  entity "representacion_adjuntos" as representacion_adjuntos {
+    * **representacion_id** : CHAR(36) <<PK>> <<FK>>
+    * **adjunto_id** : CHAR(36) <<PK>> <<FK>>
+    --
+  }
+  entity "casos_soporte" as casos_soporte {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * cliente_id : CHAR(36) <<FK>>
+      solicitud_id : CHAR(36) <<FK>>
+      conversacion_id : CHAR(36) <<FK>>
+    * motivo : ENUM(4)
+      comentario : VARCHAR(2000)
+      resumen_conversacion : TEXT
+    * estado : ENUM('PENDIENTE','EN_ATENCION','RESUELTO')
+      atendido_por : CHAR(36) <<FK>>
+      notas : VARCHAR(4000)
+  }
+}
+
+package "Búsqueda, invitación y citas" #F5F5F5 {
+  entity "conjuntos_recomendaciones" as conjuntos_recomendaciones #EEEEEE {
+    * id <<PK>>
+  }
+  entity "invitaciones" as invitaciones #EEEEEE {
+    * id <<PK>>
+  }
+  entity "citas" as citas #EEEEEE {
+    * id <<PK>>
+  }
+}
+
+package "Propuestas y control de costos" #F5F5F5 {
+  entity "propuestas" as propuestas #EEEEEE {
+    * id <<PK>>
+  }
+  entity "cambios" as cambios #EEEEEE {
+    * id <<PK>>
+  }
+  entity "cambio_evidencias" as cambio_evidencias #EEEEEE {
+    * cambio_id, adjunto_id <<PK>>
+  }
+  entity "versiones_presupuesto" as versiones_presupuesto #EEEEEE {
+    * id <<PK>>
+  }
+  entity "registros_bitacora" as registros_bitacora #EEEEEE {
+    * id <<PK>>
+  }
+}
+
+package "Seguimiento, mensajes y evaluaciones" #F5F5F5 {
+  entity "mensajes_canal" as mensajes_canal #EEEEEE {
+    * id <<PK>>
+  }
+  entity "solicitudes_cierre" as solicitudes_cierre #EEEEEE {
+    * id <<PK>>
+  }
+  entity "revelaciones_domicilio" as revelaciones_domicilio #EEEEEE {
+    * id <<PK>>
+  }
+  entity "evaluaciones" as evaluaciones #EEEEEE {
+    * id <<PK>>
+  }
+}
+
+' ── Relaciones (una por FK; las FK compuestas con columna de rol generada
+'    se dibujan con su columna real) ──
+mensajes_conversacion |o--o{ adjuntos : mensaje_conversacion_id
+solicitudes ||--o{ adjuntos : solicitud_id
+adjuntos ||--o{ cambio_evidencias : solicitud_id, adjunto_id
+solicitudes ||--o{ cambios : solicitud_id
+usuarios |o--o{ casos_soporte : atendido_por
+usuarios ||--o{ casos_soporte : cliente_id
+conversaciones |o--o{ casos_soporte : conversacion_id
+solicitudes |o--o{ casos_soporte : solicitud_id
+solicitudes ||--o{ citas : solicitud_id
+solicitudes ||--o{ conjuntos_recomendaciones : solicitud_id
+usuarios ||--o{ conversaciones : cliente_id
+solicitudes |o--o| conversaciones : solicitud_id
+solicitudes ||--o{ evaluaciones : solicitud_id
+solicitudes ||--o{ historial_estados_solicitud : solicitud_id
+usuarios ||--o{ historial_estados_solicitud : cambiado_por
+solicitudes ||--o{ invitaciones : solicitud_id
+solicitudes ||--o{ mensajes_canal : solicitud_id
+conversaciones ||--o{ mensajes_conversacion : conversacion_id
+solicitudes ||--o{ propuestas : solicitud_id
+solicitudes ||--o{ registros_bitacora : solicitud_id
+adjuntos ||--o{ representacion_adjuntos : adjunto_id
+representaciones_visuales ||--o{ representacion_adjuntos : representacion_id
+solicitudes ||--o{ representaciones_visuales : solicitud_id
+solicitudes ||--o{ revelaciones_domicilio : solicitud_id
+usuarios ||--o{ solicitudes : cliente_id
+oficios ||--o{ solicitudes : oficio
+proveedores |o--o{ solicitudes : proveedor_id
+solicitudes ||--o{ solicitudes_cierre : solicitud_id
+solicitudes ||--o{ versiones_presupuesto : solicitud_id
+
+legend right
+  |= Símbolo |= Significado |
+  | * columna | NOT NULL |
+  | <<PK>> / <<FK>> / <<UQ>> | llave primaria / foránea / única |
+  | línea con doble barra → pata de gallo | uno (FK obligatoria) a muchos |
+  | línea con círculo y barra → pata de gallo | cero o uno (FK opcional) a muchos |
+  | línea con doble barra → círculo y barra | uno a cero o uno (FK única) |
+  | ENUM(n) | enumeración de n valores (ver esquema_bd.sql) |
+  | ↑ | UNSIGNED |
+endlegend
+@enduml

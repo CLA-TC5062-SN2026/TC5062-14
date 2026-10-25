@@ -1,0 +1,78 @@
+@startuml arquitectura_equipo_componentes
+' =====================================================================
+' UnCalificado — Arquitectura consolidada del equipo (C4: contenedores y componentes)
+' Insumos: diagramas de componentes de David (.mmd), Israel (.puml),
+'          Jesús (.puml) y Norman (.puml). Decisiones AR-xx en arquitectura_equipo.md.
+' Contrato: 02_openapi/openapi_equipo.yaml · Dominio: 03_diagrama_clases/
+' =====================================================================
+!include <C4/C4_Component>
+
+LAYOUT_TOP_DOWN()
+AddElementTag("implementado", $bgColor="#2E7D32", $fontColor="#FFFFFF", $borderColor="#1B5E20")
+AddElementTag("transversal", $bgColor="#5C6BC0", $fontColor="#FFFFFF", $borderColor="#283593")
+AddElementTag("infra", $bgColor="#78909C", $fontColor="#FFFFFF", $borderColor="#455A64")
+
+title UnCalificado — Arquitectura consolidada del equipo\n<size:11>Cliente-servidor · API REST /api/v1 · backend monolítico modular en capas (AR-01)</size>
+
+Person(usuario, "Cliente · Trabajador · Organización", "Usuarios de la plataforma (SRS §2.4)")
+Person(admin, "Administrador", "Verificaciones, soporte y ARCO; segundo factor (RNF-11)")
+
+System_Boundary(sys, "UnCalificado") {
+
+  Container(web, "Aplicación web responsive", "SPA servida como contenido estático", "Interfaz de los cuatro actores (RNF-02)")
+  Container(app, "App móvil nativa", "Tecnología por definir", "Mismas funciones por rol que la web (RE-01)")
+  Container(proxy, "Proxy inverso", "Nginx", "TLS (RE-09), CORS, límite de peticiones, requestId y archivos estáticos de la SPA (AR-05)")
+
+  Container_Boundary(api, "API REST — monolito modular (Python 3.10+ · Flask 3.1 · Gunicorn) — una sola unidad desplegable") {
+
+    Component(rest, "Capa de API", "Blueprints Flask", "Rutas de openapi_equipo.yaml, validación de entradas y errores {codigo, mensaje, errores}", $tags="implementado")
+    Component(seg, "Seguridad", "Middleware · PyJWT · bcrypt", "@token_required, @roles_required, propiedad del recurso, segundo factor (RNF-03, RNF-04, RNF-11)", $tags="implementado")
+
+    Boundary(mod, "Capa de aplicación y dominio — módulos (AR-03)") {
+      Component(m_id, "Identidad y acceso", "Servicio", "Cuentas, sesiones, consentimiento (RF-01, RF-02)", $tags="implementado")
+      Component(m_prov, "Proveedores y verificación", "Servicio", "Perfiles, disponibilidad, verificaciones (RF-03 a RF-12)")
+      Component(m_conv, "Conversación con el agente", "Servicio", "Diálogo, clasificación, resumen, representación visual (RF-13 a RF-15, RF-19, RF-23, RF-25)")
+      Component(m_sol, "Solicitudes", "Servicio", "Borrador, adjuntos, captura manual, estados y cierre (RF-16 a RF-21, RF-45, RF-47)", $tags="implementado")
+      Component(m_bus, "Búsqueda y recomendaciones", "Servicio", "Compatibles, 3–4 opciones, invitaciones (RF-26 a RF-32)")
+      Component(m_cit, "Citas", "Servicio", "Doble confirmación y modificaciones (RF-33 a RF-37)")
+      Component(m_prop, "Propuestas y cambios", "Servicio", "Versiones, cambios, contrapropuestas, presupuesto (RF-38 a RF-44, RF-55)")
+      Component(m_col, "Mensajería y evaluaciones", "Servicio", "Canal interno y calificaciones (RF-46, RF-49 a RF-51)")
+      Component(m_sop, "Soporte", "Servicio", "Casos que atiende el administrador (RF-22)", $tags="implementado")
+      Component(m_priv, "Privacidad y ARCO", "Servicio", "Revelación del domicilio, ARCO, anonimización (RF-24, RF-52 a RF-54)")
+      Component(m_not, "Notificaciones y plazos", "Servicio", "Avisos y vencimientos de 4 h, 24 h, 72 h y 7 días (RF-32, RF-34, RF-36, RF-41, RF-48, RF-51)")
+      Component(m_aud, "Auditoría", "Servicio", "Bitácora append-only con hash encadenado (RNF-12, RD-17)", $tags="transversal")
+    }
+
+    Boundary(inf, "Capa de infraestructura — adaptadores (AR-04)") {
+      Component(a_db, "Repositorios", "PyMySQL · SQL parametrizado", "IConexion: transacciones locales (RNF-13)", $tags="implementado")
+      Component(a_ia, "Adaptador del agente de IA", "HTTPS · interfaz IAgenteIA", "conversar, clasificar, recomendar, analizar, representar; si falla: 503 y captura manual (RF-21)", $tags="infra")
+      Component(a_arch, "Adaptador de almacenamiento", "Interfaz IAlmacenamiento", "Guardar, leer y borrar; URLs firmadas temporales (RNF-06)", $tags="infra")
+      Component(a_obs, "Registro y métricas", "Logs JSON con requestId", "Trazas, errores y datos para el reporte de disponibilidad (RNF-09)", $tags="infra")
+    }
+  }
+
+  Container(plan, "Planificador", "Mismo código · proceso aparte (APScheduler)", "Ejecuta los vencimientos y recordatorios de forma idempotente (AR-06)")
+  ContainerDb(bd, "Base de datos", "MySQL 8 · InnoDB · utf8mb4", "Entidades del diagrama de clases consolidado, estados y bitácora (AR-02)")
+  ContainerDb(obj, "Almacenamiento de objetos", "Privado, compatible con S3", "Fotos, videos, documentos de verificación y representaciones visuales (AR-07)")
+}
+
+System_Ext(ia, "Proveedor de IA externo", "LLM (RE-04). No aprueba ni modifica datos sin la acción de un usuario")
+
+Rel(usuario, proxy, "Usa la web", "HTTPS")
+Rel(usuario, app, "Usa", "HTTPS")
+Rel(admin, proxy, "Usa la web", "HTTPS")
+Rel(proxy, web, "Sirve")
+Rel(web, proxy, "Llama a la API", "JSON/HTTPS · Bearer JWT")
+Rel(app, proxy, "Llama a la API", "JSON/HTTPS · Bearer JWT")
+Rel(proxy, rest, "Reenvía /api/v1", "HTTP interno")
+Rel(rest, seg, "Autentica y autoriza")
+Rel(rest, mod, "Delega en el módulo dueño")
+Rel(mod, m_aud, "Registra decisiones")
+Rel(mod, inf, "Usa puertos")
+Rel(a_db, bd, "Lee y escribe", "TLS")
+Rel(a_arch, obj, "Guarda y lee", "HTTPS")
+Rel(a_ia, ia, "Solicita", "HTTPS")
+Rel(plan, m_not, "Dispara vencimientos")
+
+SHOW_LEGEND()
+@enduml

@@ -1,0 +1,38 @@
+@startuml arquitectura_02_contenedores
+' C4 nivel 2 — Contenedores de UnCalificado
+' Verde = implementado en backend_uncalificado (oct-2026). Gris punteado = previsto por el contrato/SRS.
+!include <C4/C4_Container>
+
+LAYOUT_TOP_DOWN()
+AddElementTag("implementado", $bgColor="#2E7D32", $fontColor="#FFFFFF", $borderColor="#1B5E20")
+AddElementTag("previsto", $bgColor="#ECEFF1", $fontColor="#37474F", $borderColor="#78909C", $borderStyle=DashedLine())
+AddRelTag("previsto", $lineStyle=DashedLine())
+
+title UnCalificado — Diagrama de contenedores (C4 nivel 2)
+
+Person(usuario, "Cliente / Trabajador / Organización", "Usuarios de la plataforma")
+Person(admin, "Administrador", "Rol interno aprovisionado")
+
+System_Boundary(sys, "UnCalificado") {
+  Container(web, "Aplicación web responsive", "Frontend (tecnología por definir)", "Pantallas para los cuatro actores; 360 × 640 px sin desplazamiento horizontal (RNF-02)", $tags="previsto")
+  Container(app, "App nativa", "Móvil (tecnología por definir)", "Mismas funciones por rol que la web (RE-01, RNF-02-AC-2)", $tags="previsto")
+  Container(api, "API REST", "Python 3.10+ · Flask 3.1 · PyJWT · bcrypt", "Contrato openapi.yaml v0.2.0. Implementados: /auth, /solicitudes, /casos-soporte, /health", $tags="implementado")
+  ContainerDb(bd, "Base de datos", "MySQL 8 (InnoDB, utf8mb4)", "usuarios, avisos_privacidad, consentimientos, solicitudes, casos_soporte", $tags="implementado")
+  Container(archivos, "Almacenamiento de archivos", "Por definir", "Fotos, videos, documentos de verificación y portafolio con acceso por solicitud (RNF-06)", $tags="previsto")
+  Container(planificador, "Planificador de procesos", "Por definir", "Expiraciones (4 h, 24 h, 72 h, 7 días), recordatorios y vencimientos", $tags="previsto")
+}
+
+System_Ext(ia, "Proveedor de IA externo", "LLM (RE-04)")
+
+Rel(usuario, web, "Usa", "HTTPS")
+Rel(usuario, app, "Usa", "HTTPS", $tags="previsto")
+Rel(admin, web, "Usa", "HTTPS")
+Rel(web, api, "Llama", "JSON/HTTPS · Bearer JWT")
+Rel(app, api, "Llama", "JSON/HTTPS · Bearer JWT", $tags="previsto")
+Rel(api, bd, "Lee y escribe", "PyMySQL · SQL parametrizado")
+Rel(api, archivos, "Guarda y sirve archivos", "", $tags="previsto")
+Rel(planificador, api, "Dispara expiraciones y recordatorios", "", $tags="previsto")
+Rel(api, ia, "Adaptador del agente", "HTTPS", $tags="previsto")
+
+SHOW_LEGEND()
+@enduml

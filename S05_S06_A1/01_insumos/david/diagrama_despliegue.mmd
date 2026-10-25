@@ -1,0 +1,23 @@
+flowchart TB
+  subgraph USERS[Dispositivos de usuarios]
+    BROWSER[Navegador web]
+    MOBILE[App nativa]
+  end
+  subgraph CLOUD[Entorno cloud - red privada]
+    INGRESS[Entrada HTTPS / TLS]
+    subgraph HOST[Servidor de aplicaciones - contenedores]
+      BACK[Contenedor backend REST]
+      WORKER[Contenedor worker]
+    end
+    PG[(PostgreSQL - volumen persistente)]
+    STORAGE[(Almacenamiento privado de objetos)]
+    INGRESS --> BACK
+    BACK --> PG
+    BACK --> STORAGE
+    WORKER --> PG
+    WORKER --> STORAGE
+  end
+  AI[Servicio externo de IA]
+  BROWSER -->|HTTPS| INGRESS
+  MOBILE -->|HTTPS| INGRESS
+  BACK -->|HTTPS saliente| AI

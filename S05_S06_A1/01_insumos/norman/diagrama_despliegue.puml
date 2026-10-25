@@ -1,0 +1,74 @@
+@startuml diagrama_despliegue
+' =====================================================================
+' UnCalificado — Diagrama de despliegue (propuesta coherente con ADR-001)
+' Cliente-servidor con backend monolítico modular: una sola unidad desplegable.
+' Tecnológicamente neutral: no se fija proveedor cloud, servicio de contenedores,
+' motor de base de datos, almacenamiento ni proveedor de IA (el SRS no los define).
+' Node.js/Express/TypeScript y React/Vite son decisiones de implementación
+' (S01_A2/stack_decision.md), no requisitos del SRS.
+' =====================================================================
+
+title UnCalificado — Diagrama de despliegue (propuesta)
+
+skinparam shadowing false
+skinparam defaultTextAlignment center
+skinparam nodesep 60
+skinparam ranksep 70
+skinparam node {
+  BackgroundColor #FFFFFF
+  BorderColor #555555
+}
+skinparam cloud {
+  BackgroundColor #F7FAFF
+  BorderColor #5B7DB1
+}
+skinparam note {
+  BackgroundColor #FFFBE6
+  BorderColor #C9B458
+}
+
+node "Dispositivo del usuario\n(computadora o celular)" as dispositivo {
+  node "Navegador web" <<cliente web>> as navegador {
+    artifact "Aplicación web (SPA)\nen ejecución" as spa_run
+  }
+  node "Sistema operativo móvil" <<cliente móvil>> as movil {
+    artifact "App móvil nativa\n(tecnología no definida)" as app
+  }
+}
+
+cloud "Infraestructura cloud\n(plataforma no definida)" as nube {
+
+  node "Servidor de contenido estático" <<servidor web>> as estatico {
+    artifact "Build de la aplicación web\nReact + Vite\n(decisión de implementación)" as spa_build
+  }
+
+  node "Contenedor de aplicación" <<contenedor>> as contenedor {
+    artifact "Backend API — monolito modular\nNode.js + Express + TypeScript\n(decisión de implementación)\n\nAPI REST /api/v1 · módulos de dominio\nnotificaciones y plazos programados" as api
+  }
+
+  database "Servicio de base de datos\nadministrado\n(motor no definido)" as db
+
+  storage "Almacenamiento de objetos\n(fotos, videos, documentos)" as objetos
+}
+
+cloud "Servicio externo de IA\n(proveedor no definido)" as ia
+
+navegador --> estatico : HTTPS\n(descarga de la SPA)
+spa_run --> api : HTTPS\nREST · JSON · JWT
+app --> api : HTTPS\nREST · JSON · JWT
+api --> db : conexión segura\n(cifrada)
+api --> objetos : HTTPS
+api --> ia : HTTPS
+
+note right of contenedor
+  Una sola instancia de la unidad desplegable:
+  no hay microservicios. Todas las interfaces
+  usan HTTPS (RE-09).
+end note
+
+note bottom of nube
+  La plataforma cloud concreta (proveedor, servicio de contenedores,
+  base de datos y almacenamiento) queda como decisión de implementación.
+end note
+
+@enduml

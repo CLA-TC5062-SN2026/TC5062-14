@@ -1,0 +1,180 @@
+@startuml diagrama_er_2
+' =====================================================================
+' UnCalificado — Diagrama entidad-relación de la base de datos (MySQL 8)
+' GENERADO por generar_er.py a partir de information_schema después de
+' cargar esquema_bd.sql. No editar a mano: regenerar si cambia el SQL.
+' Notación: * = NOT NULL · <<PK>> · <<FK>> · <<UQ>> (único) ·
+' ||--o{ = uno a muchos · |o--o{ = FK opcional · ||--o| = uno a uno
+' =====================================================================
+title UnCalificado — Modelo entidad-relación · Proveedores y verificación\n<size:11>11 tablas del módulo con todas sus columnas · en gris, tablas de otros módulos relacionadas · * = NOT NULL</size>
+hide circle
+skinparam linetype ortho
+skinparam shadowing false
+skinparam nodesep 40
+skinparam ranksep 70
+skinparam defaultFontSize 11
+skinparam class {
+  BorderColor #546E7A
+  ArrowColor #546E7A
+}
+
+package "Cuentas y privacidad" #F5F5F5 {
+  entity "usuarios" as usuarios #EEEEEE {
+    * id <<PK>>
+  }
+}
+
+package "Proveedores y verificación" #E8F5E9 {
+  entity "proveedores" as proveedores {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * usuario_id : CHAR(36) <<FK>> <<UQ>>
+    * modalidad : ENUM(4) <<FK>>
+      rango_precio_minimo : DECIMAL(12,2)
+      rango_precio_maximo : DECIMAL(12,2)
+      rango_precio_unidad : VARCHAR(40)
+      garantia : VARCHAR(500)
+      horario_dias : SET(dias)
+      horario_hora_inicio : TIME
+      horario_hora_fin : TIME
+      disponibilidad_general : ENUM('ACEPTANDO_PROYECTOS','SIN_CAPACIDAD')
+  }
+  entity "trabajadores_independientes" as trabajadores_independientes {
+    * **proveedor_id** : CHAR(36) <<PK>> <<FK>>
+    --
+      foto_clave : VARCHAR(255)
+      anios_experiencia : TINYINT↑
+      domicilio_calle : VARCHAR(150)
+      domicilio_numero_exterior : VARCHAR(20)
+      domicilio_colonia : VARCHAR(120)
+      domicilio_municipio : ENUM(6)
+      domicilio_codigo_postal : CHAR(5)
+  }
+  entity "organizaciones_contratistas" as organizaciones_contratistas {
+    * **proveedor_id** : CHAR(36) <<PK>> <<FK>>
+    --
+    * nombre_legal_o_comercial : VARCHAR(200)
+      representante_contacto : VARCHAR(120)
+  }
+  entity "oficios" as oficios {
+    * **clave** : VARCHAR(30) <<PK>>
+    --
+    * nombre : VARCHAR(80) <<UQ>>
+    * activo : BOOLEAN
+  }
+  entity "proveedor_oficios" as proveedor_oficios {
+    * **proveedor_id** : CHAR(36) <<PK>> <<FK>>
+    * **oficio** : VARCHAR(30) <<PK>> <<FK>>
+    --
+  }
+  entity "proveedor_zonas" as proveedor_zonas {
+    * **proveedor_id** : CHAR(36) <<PK>> <<FK>>
+    * **municipio** : ENUM(6) <<PK>>
+    * **colonia** : VARCHAR(120) <<PK>>
+    --
+  }
+  entity "fechas_no_disponibles" as fechas_no_disponibles {
+    * **proveedor_id** : CHAR(36) <<PK>> <<FK>>
+    * **fecha** : DATE <<PK>>
+    --
+  }
+  entity "franjas_bloqueadas" as franjas_bloqueadas {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * proveedor_id : CHAR(36) <<FK>>
+    * inicio : DATETIME
+    * fin : DATETIME
+      cita_id : CHAR(36) <<FK>> <<UQ>>
+  }
+  entity "fotos_portafolio" as fotos_portafolio {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * trabajador_id : CHAR(36) <<FK>>
+    * clave_almacenamiento : VARCHAR(255) <<UQ>>
+      descripcion : VARCHAR(280)
+  }
+  entity "verificaciones" as verificaciones {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * proveedor_id : CHAR(36) <<FK>>
+    * tipo : ENUM('IDENTIDAD','EXPERIENCIA','ORGANIZACION')
+    * estado : ENUM(4)
+      fecha_vencimiento_documento : DATE
+      motivo : VARCHAR(1000)
+      resuelta_por : CHAR(36) <<FK>>
+      resuelta_en : DATETIME
+  }
+  entity "documentos_verificacion" as documentos_verificacion {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * verificacion_id : CHAR(36) <<FK>>
+    * clave_almacenamiento : VARCHAR(255) <<UQ>>
+    * mime : VARCHAR(100)
+    * tamano_bytes : INT↑
+  }
+}
+
+package "Solicitud y agente de IA" #F5F5F5 {
+  entity "solicitudes" as solicitudes #EEEEEE {
+    * id <<PK>>
+  }
+}
+
+package "Búsqueda, invitación y citas" #F5F5F5 {
+  entity "recomendaciones" as recomendaciones #EEEEEE {
+    * conjunto_id, posicion <<PK>>
+  }
+  entity "invitaciones" as invitaciones #EEEEEE {
+    * id <<PK>>
+  }
+  entity "citas" as citas #EEEEEE {
+    * id <<PK>>
+  }
+}
+
+package "Propuestas y control de costos" #F5F5F5 {
+  entity "propuestas" as propuestas #EEEEEE {
+    * id <<PK>>
+  }
+}
+
+package "Seguimiento, mensajes y evaluaciones" #F5F5F5 {
+  entity "revelaciones_domicilio" as revelaciones_domicilio #EEEEEE {
+    * id <<PK>>
+  }
+}
+
+' ── Relaciones (una por FK; las FK compuestas con columna de rol generada
+'    se dibujan con su columna real) ──
+proveedores ||--o{ citas : proveedor_id
+verificaciones ||--o{ documentos_verificacion : verificacion_id
+proveedores ||--o{ fechas_no_disponibles : proveedor_id
+trabajadores_independientes ||--o{ fotos_portafolio : trabajador_id
+citas |o--o| franjas_bloqueadas : cita_id
+proveedores ||--o{ franjas_bloqueadas : proveedor_id
+proveedores ||--o{ invitaciones : proveedor_id
+proveedores ||--o| organizaciones_contratistas : proveedor_id
+proveedores ||--o{ propuestas : proveedor_id
+oficios ||--o{ proveedor_oficios : oficio
+proveedores ||--o{ proveedor_oficios : proveedor_id
+proveedores ||--o{ proveedor_zonas : proveedor_id
+usuarios ||--o{ proveedores : usuario_id, modalidad
+proveedores ||--o{ recomendaciones : proveedor_id
+trabajadores_independientes ||--o{ revelaciones_domicilio : trabajador_id
+oficios ||--o{ solicitudes : oficio
+proveedores |o--o{ solicitudes : proveedor_id
+proveedores ||--o| trabajadores_independientes : proveedor_id
+usuarios |o--o{ verificaciones : resuelta_por
+proveedores ||--o{ verificaciones : proveedor_id
+
+legend right
+  |= Símbolo |= Significado |
+  | * columna | NOT NULL |
+  | <<PK>> / <<FK>> / <<UQ>> | llave primaria / foránea / única |
+  | línea con doble barra → pata de gallo | uno (FK obligatoria) a muchos |
+  | línea con círculo y barra → pata de gallo | cero o uno (FK opcional) a muchos |
+  | línea con doble barra → círculo y barra | uno a cero o uno (FK única) |
+  | ENUM(n) | enumeración de n valores (ver esquema_bd.sql) |
+  | ↑ | UNSIGNED |
+endlegend
+@enduml

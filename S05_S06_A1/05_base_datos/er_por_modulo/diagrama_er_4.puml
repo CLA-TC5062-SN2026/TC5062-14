@@ -1,0 +1,116 @@
+@startuml diagrama_er_4
+' =====================================================================
+' UnCalificado — Diagrama entidad-relación de la base de datos (MySQL 8)
+' GENERADO por generar_er.py a partir de information_schema después de
+' cargar esquema_bd.sql. No editar a mano: regenerar si cambia el SQL.
+' Notación: * = NOT NULL · <<PK>> · <<FK>> · <<UQ>> (único) ·
+' ||--o{ = uno a muchos · |o--o{ = FK opcional · ||--o| = uno a uno
+' =====================================================================
+title UnCalificado — Modelo entidad-relación · Búsqueda, invitación y citas\n<size:11>5 tablas del módulo con todas sus columnas · en gris, tablas de otros módulos relacionadas · * = NOT NULL</size>
+hide circle
+skinparam linetype ortho
+skinparam shadowing false
+skinparam nodesep 40
+skinparam ranksep 70
+skinparam defaultFontSize 11
+skinparam class {
+  BorderColor #546E7A
+  ArrowColor #546E7A
+}
+
+package "Cuentas y privacidad" #F5F5F5 {
+  entity "usuarios" as usuarios #EEEEEE {
+    * id <<PK>>
+  }
+}
+
+package "Proveedores y verificación" #F5F5F5 {
+  entity "proveedores" as proveedores #EEEEEE {
+    * id <<PK>>
+  }
+  entity "franjas_bloqueadas" as franjas_bloqueadas #EEEEEE {
+    * id <<PK>>
+  }
+}
+
+package "Solicitud y agente de IA" #F5F5F5 {
+  entity "solicitudes" as solicitudes #EEEEEE {
+    * id <<PK>>
+  }
+}
+
+package "Búsqueda, invitación y citas" #F3E5F5 {
+  entity "conjuntos_recomendaciones" as conjuntos_recomendaciones {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+    * menos_opciones_de_las_habituales : BOOLEAN
+      criterios_aplicados : JSON
+  }
+  entity "recomendaciones" as recomendaciones {
+    * **conjunto_id** : CHAR(36) <<PK>> <<FK>>
+    * **posicion** : TINYINT↑ <<PK>>
+    --
+    * proveedor_id : CHAR(36) <<FK>>
+    * explicacion : JSON
+  }
+  entity "invitaciones" as invitaciones {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+    * proveedor_id : CHAR(36) <<FK>>
+    * estado : ENUM(4)
+      motivo : VARCHAR(500)
+    * vence_en : DATETIME
+      respondida_en : DATETIME
+  }
+  entity "citas" as citas {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+    * proveedor_id : CHAR(36) <<FK>>
+    * tipo : ENUM('VISITA_VALORACION','EJECUCION')
+    * estado : ENUM(5)
+    * inicio : DATETIME
+    * fin : DATETIME
+      costo : DECIMAL(12,2)
+      confirmada_por_proveedor_en : DATETIME
+      confirmada_por_cliente_en : DATETIME
+    * expira_en : DATETIME
+  }
+  entity "modificaciones_cita" as modificaciones_cita {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * cita_id : CHAR(36) <<FK>>
+    * tipo : ENUM(4)
+    * motivo : VARCHAR(1000)
+      nueva_fecha : DATETIME
+      retraso_minutos : SMALLINT↑
+    * solicitada_por : CHAR(36) <<FK>>
+  }
+}
+
+' ── Relaciones (una por FK; las FK compuestas con columna de rol generada
+'    se dibujan con su columna real) ──
+proveedores ||--o{ citas : proveedor_id
+solicitudes ||--o{ citas : solicitud_id
+solicitudes ||--o{ conjuntos_recomendaciones : solicitud_id
+citas |o--o| franjas_bloqueadas : cita_id
+proveedores ||--o{ invitaciones : proveedor_id
+solicitudes ||--o{ invitaciones : solicitud_id
+citas ||--o{ modificaciones_cita : cita_id
+usuarios ||--o{ modificaciones_cita : solicitada_por
+conjuntos_recomendaciones ||--o{ recomendaciones : conjunto_id
+proveedores ||--o{ recomendaciones : proveedor_id
+
+legend right
+  |= Símbolo |= Significado |
+  | * columna | NOT NULL |
+  | <<PK>> / <<FK>> / <<UQ>> | llave primaria / foránea / única |
+  | línea con doble barra → pata de gallo | uno (FK obligatoria) a muchos |
+  | línea con círculo y barra → pata de gallo | cero o uno (FK opcional) a muchos |
+  | línea con doble barra → círculo y barra | uno a cero o uno (FK única) |
+  | ENUM(n) | enumeración de n valores (ver esquema_bd.sql) |
+  | ↑ | UNSIGNED |
+endlegend
+@enduml

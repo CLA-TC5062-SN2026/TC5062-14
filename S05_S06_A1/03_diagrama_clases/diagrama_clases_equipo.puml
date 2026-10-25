@@ -1,0 +1,530 @@
+@startuml diagrama_clases_equipo
+' =====================================================================
+' UnCalificado — Diagrama de clases del dominio CONSOLIDADO DEL EQUIPO
+' Insumos: David (diagrama_clases.mmd), Israel (diagrama_clases.puml),
+'          Jesús (diagrama_clases.puml), Norman (diagrama_clases.puml).
+' Fuente funcional: S03_A1/SRS_equipo.md. Contrato: 02_openapi/openapi_equipo.yaml.
+' Análisis de diferencias y decisiones DC-xx: analisis_diagrama_clases.md
+' Insumo directo del esquema de base de datos (Parte 1). Sincronizado con esquema_bd.sql v1.2
+' (revision_sql.md: R-02, R-04, R-05, R-08 y C-01 a C-06).
+' Colores: blanco = consenso · azul = conflicto resuelto · amarillo = gap adoptado
+' =====================================================================
+
+title UnCalificado — Diagrama de clases del dominio (consolidado del equipo)\n<size:11>Blanco = consenso · Azul = conflicto resuelto · Amarillo = gap adoptado · Gris = objeto de valor</size>
+
+hide empty members
+hide circle
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam linetype polyline
+skinparam nodesep 35
+skinparam ranksep 60
+skinparam defaultFontSize 12
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #455A64
+  BackgroundColor<<conflicto>> #E3F2FD
+  BorderColor<<conflicto>> #1565C0
+  BackgroundColor<<gap>> #FFF8E1
+  BorderColor<<gap>> #F9A825
+  BackgroundColor<<valor>> #F5F5F5
+  BackgroundColor<<enum>> #FAFAFA
+}
+skinparam stereotypeFontSize 9
+skinparam note {
+  BackgroundColor #FFFDE7
+  BorderColor #BDB76B
+}
+
+' ---------------------------------------------------------------------
+package "Cuentas y privacidad" {
+  class Usuario <<conflicto>> {
+    id : UUID
+    nombre : String
+    correo : String {unique}
+    contrasenaHash : String
+    telefono : String [0..1]
+    rol : Rol
+    estado : EstadoCuenta
+    declaraMayorEdad : Boolean
+    segundoFactorActivo : Boolean
+    segundoFactorSecreto : String [0..1]
+    creadoEn : DateTime
+  }
+  enum Rol <<enum>> {
+    cliente
+    trabajador
+    organizacion
+    administrador
+  }
+  enum EstadoCuenta <<enum>> {
+    activa
+    inactiva
+    anonimizada
+  }
+  class AvisoPrivacidad <<gap>> {
+    version : Integer {PK}
+    contenido : Text
+    publicadoEn : DateTime
+  }
+  class Consentimiento {
+    id : UUID
+    versionAviso : Integer
+    aceptadoEn : DateTime
+  }
+  class SolicitudArco {
+    folio : String {PK}
+    derecho : DerechoArco
+    registradaEn : DateTime
+    fechaLimite : Date
+    /porVencer : Boolean
+    respuesta : Text [0..1]
+    respondidaEn : DateTime [0..1]
+  }
+  class Notificacion <<gap>> {
+    id : UUID
+    tipo : TipoNotificacion
+    titulo : String
+    cuerpo : String [0..1]
+    referencia : ReferenciaEntidad [0..1]
+    leida : Boolean
+    creadaEn : DateTime
+  }
+}
+
+' ---------------------------------------------------------------------
+package "Proveedores y verificación" {
+  abstract class Proveedor <<conflicto>> {
+    id : UUID
+    oficios : Oficio [1..*]
+    cobertura : Zona [1..*]
+    rangoPrecioReferencia : RangoPrecio [0..1]
+    garantia : String [0..1]
+    /calificacionPromedio : Decimal
+    /perfilCompleto : Boolean
+  }
+  class TrabajadorIndependiente <<conflicto>> {
+    foto : String [0..1]
+    aniosExperiencia : Integer [0..1]
+    domicilio : Domicilio [0..1]
+  }
+  class OrganizacionContratistas <<conflicto>> {
+    nombreLegalOComercial : String
+    representanteContacto : String [0..1]
+  }
+  class HorarioAtencion <<valor>> {
+    dias : DiaSemana [1..*]
+    horaInicio : Time
+    horaFin : Time
+  }
+  class Disponibilidad <<conflicto>> {
+    fechasNoDisponibles : Date [0..*]
+    disponibilidadGeneral : DisponibilidadGeneral [0..1]
+  }
+  class Franja {
+    inicio : DateTime
+    fin : DateTime
+  }
+  class DocumentoVerificacion <<gap>> {
+    id : UUID
+    claveAlmacenamiento : String
+    mime : String
+    tamanoBytes : Integer
+    subidoEn : DateTime
+  }
+  class FotoPortafolio <<gap>> {
+    id : UUID
+    claveAlmacenamiento : String
+    descripcion : String [0..1]
+  }
+  class Verificacion <<conflicto>> {
+    id : UUID
+    tipo : TipoVerificacion
+    estado : EstadoVerificacion
+    fechaVencimientoDocumento : Date [0..1]
+    motivo : String [0..1]
+    resueltaEn : DateTime [0..1]
+  }
+  enum EstadoVerificacion <<enum>> {
+    pendiente
+    aprobada
+    rechazada
+    retirada
+  }
+}
+
+' ---------------------------------------------------------------------
+package "Solicitud y agente de IA" {
+  class Solicitud <<conflicto>> {
+    id : UUID
+    estado : EstadoProyecto
+    modoCaptura : ModoCaptura
+    resultadoEsperado : String
+    oficio : Oficio
+    tipoTrabajo : String [0..1]
+    zonaAproximada : Zona
+    fechaDeseada : Date [0..1]
+    descripcion : Text
+    domicilioExacto : Domicilio [0..1]
+    confirmadaEn : DateTime [0..1]
+    creadaEn : DateTime
+  }
+  enum EstadoProyecto <<enum>> {
+    borrador
+    confirmada
+    programado
+    en_proceso
+    terminado
+    concluido
+  }
+  class ResumenSolicitud <<gap>> {
+    medidas : ValorDesconocible
+    condicionesEspacio : ValorDesconocible
+    materiales : ValorDesconocible
+    requiereMateriales : Boolean [0..1]
+    compradorMateriales : String
+    presupuestoCliente : Dinero [0..1]
+    confirmado : Boolean
+  }
+  class Zona <<valor>> {
+    municipio : Municipio
+    colonia : String
+  }
+  class Domicilio <<valor>> {
+    calle : String
+    numeroExterior : String
+    colonia : String
+    municipio : Municipio
+    codigoPostal : String
+  }
+  class Conversacion <<conflicto>> {
+    id : UUID
+    esAsistenteAutomatico : Boolean = true
+    aclaracionesRealizadas : Integer [0..2]
+    correccionesConsecutivas : Integer
+    creadaEn : DateTime
+  }
+  class MensajeConversacion {
+    id : UUID
+    emisor : EmisorConversacion
+    contenido : Text
+    enviadoEn : DateTime
+  }
+  class Adjunto <<conflicto>> {
+    id : UUID
+    tipo : TipoArchivo
+    mime : String
+    tamanoBytes : Integer
+    claveAlmacenamiento : String
+    esDelDomicilio : Boolean
+  }
+  class RepresentacionVisual {
+    id : UUID
+    descripcion : Text
+    claveImagen : String
+    aprobada : Boolean
+    esVersionReferencia : Boolean
+    leyenda : String = "No es plano técnico"
+  }
+  class CasoSoporte <<conflicto>> {
+    id : UUID
+    motivo : MotivoSoporte
+    comentario : Text [0..1]
+    resumenConversacion : Text [0..1]
+    estado : EstadoCaso
+    notas : Text [0..1]
+    creadoEn : DateTime
+  }
+}
+
+' ---------------------------------------------------------------------
+package "Búsqueda, invitación y citas" {
+  class ConjuntoRecomendaciones <<conflicto>> {
+    id : UUID
+    menosOpcionesDeLasHabituales : Boolean
+    proveedoresExcluidos : UUID [0..*]
+    criteriosAplicados : CriteriosBusqueda [0..1]
+    generadoEn : DateTime
+  }
+  class Recomendacion <<conflicto>> {
+    posicion : Integer [1..4]
+    explicacion : ExplicacionRecomendacion
+  }
+  class Invitacion <<conflicto>> {
+    id : UUID
+    estado : EstadoInvitacion
+    motivo : String [0..1]
+    enviadaEn : DateTime
+    venceEn : DateTime
+    respondidaEn : DateTime [0..1]
+  }
+  class Cita <<conflicto>> {
+    id : UUID
+    tipo : TipoCita
+    estado : EstadoCita
+    inicio : DateTime
+    fin : DateTime
+    costo : Dinero [0..1]
+    confirmadaPorProveedorEn : DateTime [0..1]
+    confirmadaPorClienteEn : DateTime [0..1]
+    expiraEn : DateTime
+  }
+  class ModificacionCita <<gap>> {
+    tipo : TipoModificacion
+    motivo : String
+    nuevoInicio : DateTime [0..1]
+    retrasoMinutos : Integer [0..1]
+    solicitadaEn : DateTime
+  }
+}
+
+' ---------------------------------------------------------------------
+package "Propuestas y control de costos" {
+  class Propuesta <<conflicto>> {
+    id : UUID
+    estado : EstadoNegociacion
+    fechaPrimeraEmision : DateTime
+    plazoAcuerdoVenceEn : DateTime
+  }
+  class VersionPropuesta <<conflicto>> {
+    numero : Integer
+    trabajo : Text
+    fechaInicio : Date
+    fechaFin : Date
+    total : Dinero
+    estado : EstadoPropuesta
+    enviadaEn : DateTime
+    aceptadaEn : DateTime [0..1]
+  }
+  class ConceptoPropuesta <<conflicto>> {
+    categoria : CategoriaConcepto
+    descripcion : String
+    subtotal : Dinero
+  }
+  class MaterialPropuesta <<conflicto>> {
+    cantidad : Decimal
+    unidad : String
+    precioUnitario : Dinero
+    marcaOCalidad : String [0..1]
+  }
+  class VersionPresupuesto <<conflicto>> {
+    numero : Integer
+    totalAnterior : Dinero
+    totalActualizado : Dinero
+    diferenciaContraInicial : Dinero
+    creadaEn : DateTime
+    /esInicial : Boolean
+  }
+  class Cambio <<conflicto>> {
+    id : UUID
+    tipo : TipoCambio
+    iniciadoPor : ParteAcuerdo
+    motivo : Text
+    montoAjuste : Dinero
+    presupuestoActualizado : Dinero
+    elementosAfectados : String [0..*]
+    fechaPropuesta : Date [0..1]
+    necesarioParaContinuar : Boolean
+    estado : EstadoCambio
+    venceEn : DateTime
+    parteAfectadaEnPausa : Boolean
+    pendienteNuevoAcuerdo : Boolean
+    registradoEn : DateTime
+  }
+  class Contrapropuesta <<gap>> {
+    montoAdicional : Dinero
+    presupuestoActualizado : Dinero
+    fechaPropuesta : Date [0..1]
+    comentario : Text [0..1]
+    estado : EstadoContrapropuesta
+    venceEn : DateTime
+    creadaEn : DateTime
+  }
+  class AnalisisIA <<gap>> {
+    consistencias : String [0..*]
+    datosFaltantes : String [0..*]
+    riesgos : String [0..*]
+    generadoEn : DateTime
+  }
+  class RegistroBitacora <<conflicto>> {
+    id : UUID
+    decision : TipoDecision
+    fecha : DateTime
+    hashEncadenado : String
+  }
+}
+
+' ---------------------------------------------------------------------
+package "Seguimiento, mensajes y evaluaciones" {
+  class CambioEstadoSolicitud <<gap>> {
+    id : UUID
+    estado : EstadoProyecto
+    cambiadoEn : DateTime
+  }
+  class MensajeCanal <<conflicto>> {
+    id : UUID
+    contenido : Text
+    enviadoEn : DateTime
+  }
+  class SolicitudCierre <<gap>> {
+    solicitadaEn : DateTime
+    nota : String [0..1]
+    respuesta : RespuestaCierre [0..1]
+    descripcionPendientes : Text [0..1]
+    respondidaEn : DateTime [0..1]
+    avisoAdminEn : DateTime [0..1]
+  }
+  class RevelacionDomicilio <<gap>> {
+    disparador : DisparadorRevelacion
+    reveladoEn : DateTime
+    /accesoHasta : DateTime
+  }
+  class Evaluacion <<conflicto>> {
+    id : UUID
+    direccion : DireccionEvaluacion
+    estado : EstadoEvaluacion
+    calificacion : Integer [0..1]
+    comentario : Text [0..1]
+    solicitadaEn : DateTime
+    registradaEn : DateTime [0..1]
+    publicadaEn : DateTime [0..1]
+  }
+  class DimensionesEvaluacion <<valor>> {
+    puntualidad : Integer
+    calidad : Integer
+    limpieza : Integer
+    apegoPresupuesto : Integer
+  }
+}
+
+' =====================================================================
+' Herencia
+' =====================================================================
+Proveedor <|-- TrabajadorIndependiente
+Proveedor <|-- OrganizacionContratistas
+ConceptoPropuesta <|-- MaterialPropuesta
+
+' =====================================================================
+' Cuentas y privacidad
+' =====================================================================
+Usuario "1" *-- "0..*" Consentimiento : otorga >
+Consentimiento "0..*" --> "1" AvisoPrivacidad : acepta >
+Usuario "1" -- "0..*" SolicitudArco : titular de >
+SolicitudArco "0..*" --> "0..1" Usuario : atendidaPor (administrador) >
+Usuario "1" *-- "0..*" Notificacion : recibe >
+
+' =====================================================================
+' Proveedores
+' =====================================================================
+Usuario "1" -- "0..1" Proveedor : es proveedor con >
+Proveedor *-- "1" HorarioAtencion
+Proveedor "1" *-- "1" Disponibilidad
+Disponibilidad "1" *-- "0..*" Franja : bloqueadas
+TrabajadorIndependiente "1" *-- "0..*" FotoPortafolio : portafolio
+Proveedor "1" *-- "0..*" Verificacion
+Verificacion "1" *-- "0..*" DocumentoVerificacion : evidencia
+Franja "0..1" --> "0..1" Cita : bloqueada por >
+Verificacion "0..*" --> "0..1" Usuario : resueltaPor (administrador) >
+
+' =====================================================================
+' Solicitud y agente
+' =====================================================================
+Usuario "1" -- "0..*" Solicitud : cliente >
+Solicitud "0..*" --> "0..1" Proveedor : proveedorAsociado >
+Solicitud *-- "1" Zona
+Solicitud *-- "0..1" ResumenSolicitud
+Solicitud o-- "0..1" Domicilio
+Solicitud "1" *-- "0..*" Adjunto : {máx. 10 imágenes}
+Solicitud "1" *-- "0..*" RepresentacionVisual
+RepresentacionVisual "0..*" --> "0..*" Adjunto : referencias >
+Usuario "1" -- "0..*" Conversacion : conversa >
+Conversacion "0..1" --> "0..1" Solicitud : genera >
+Conversacion "1" *-- "1..*" MensajeConversacion
+MensajeConversacion "0..1" o-- "0..*" Adjunto : adjunta
+Usuario "1" -- "0..*" CasoSoporte : abre >
+CasoSoporte "0..*" --> "0..1" Solicitud : sobre >
+CasoSoporte "0..*" --> "0..1" Conversacion : desde >
+CasoSoporte "0..*" --> "0..1" Usuario : atendidoPor (administrador) >
+
+' =====================================================================
+' Búsqueda, invitación y citas
+' =====================================================================
+Solicitud "1" *-- "0..*" ConjuntoRecomendaciones
+ConjuntoRecomendaciones "1" *-- "1..4" Recomendacion
+Recomendacion "0..*" --> "1" Proveedor : sugiere >
+Solicitud "1" *-- "0..*" Invitacion
+Invitacion "0..*" --> "1" Proveedor : dirigida a >
+Solicitud "1" *-- "0..*" Cita
+Cita "0..*" --> "1" Proveedor : prestador >
+Cita "1" *-- "0..*" ModificacionCita
+ModificacionCita "0..*" --> "1" Usuario : solicitadaPor >
+Cita "0..*" ..> "0..1" Propuesta : ejecución requiere\npropuesta aceptada
+
+' =====================================================================
+' Propuestas y costos
+' =====================================================================
+Solicitud "1" *-- "0..*" Propuesta
+Propuesta "0..*" --> "1" Proveedor : emitida por >
+Propuesta "1" *-- "1..*" VersionPropuesta
+VersionPropuesta "1" *-- "1..*" ConceptoPropuesta : desglose
+Solicitud "1" *-- "0..*" VersionPresupuesto : historial
+VersionPresupuesto "0..1" --> "0..1" VersionPropuesta : presupuesto inicial >
+Solicitud "1" *-- "0..*" Cambio
+Cambio "1" *-- "0..*" Contrapropuesta
+Cambio "1" *-- "0..1" AnalisisIA
+Cambio "0..*" --> "0..*" Adjunto : evidencias >
+VersionPresupuesto "0..1" --> "0..1" Cambio : originada por >
+Solicitud "1" *-- "0..*" RegistroBitacora : bitácora
+RegistroBitacora "0..*" --> "1" Usuario : autor >
+RegistroBitacora "0..*" --> "0..1" VersionPropuesta : decisión sobre >
+RegistroBitacora "0..*" --> "0..1" Cambio : decisión sobre >
+RegistroBitacora "0..1" --> "0..1" RegistroBitacora : anterior >
+
+' =====================================================================
+' Seguimiento y evaluaciones
+' =====================================================================
+Solicitud "1" *-- "0..*" MensajeCanal : canal interno
+MensajeCanal "0..*" --> "1" Usuario : emisor >
+Solicitud "1" *-- "0..*" SolicitudCierre
+Solicitud "1" *-- "1..*" CambioEstadoSolicitud : historial
+CambioEstadoSolicitud "0..*" --> "1" Usuario : cambiadoPor >
+Solicitud "1" *-- "0..*" RevelacionDomicilio : {una por trabajador}
+RevelacionDomicilio "0..*" --> "1" TrabajadorIndependiente : revela a >
+Solicitud "1" *-- "0..2" Evaluacion
+Evaluacion *-- "0..1" DimensionesEvaluacion : solo cliente → proveedor
+Evaluacion "0..*" --> "1" Usuario : evaluador >
+Evaluacion "0..*" --> "1" Usuario : evaluado >
+
+' =====================================================================
+' Notas de decisiones (detalle en analisis_diagrama_clases.md)
+' =====================================================================
+note top of Usuario
+  DC-01: el rol es un atributo, no una subclase.
+  Cliente y Administrador no tienen datos propios;
+  el proveedor se asocia como perfil 0..1.
+end note
+
+note bottom of Propuesta
+  DC-08: Propuesta = negociación con un proveedor
+  (estado y plazo de 72 h). Cada revisión es una
+  VersionPropuesta con su propio desglose (RF-39-AC-2).
+end note
+
+note bottom of RegistroBitacora
+  DC-12: append-only, encadenado por hash
+  (RNF-12). Se conserva anonimizada (RD-17).
+end note
+
+note bottom of Evaluacion
+  DC-13: una por dirección (0..2). Nace "pendiente"
+  al concluir; "vencida" a los 7 días (RF-51-AC-4).
+end note
+
+note top of RevelacionDomicilio
+  RF-52: solo al trabajador de esa cita o propuesta;
+  accesoHasta = conclusión + 7 días. 0..* porque
+  puede elegirse otro trabajador (revision_sql R-02).
+end note
+
+@enduml

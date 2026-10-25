@@ -1,0 +1,364 @@
+@startuml diagrama_er_compacto
+' =====================================================================
+' UnCalificado — Diagrama entidad-relación de la base de datos (MySQL 8)
+' GENERADO por generar_er.py a partir de information_schema después de
+' cargar esquema_bd.sql. No editar a mano: regenerar si cambia el SQL.
+' Notación: * = NOT NULL · <<PK>> · <<FK>> · <<UQ>> (único) ·
+' ||--o{ = uno a muchos · |o--o{ = FK opcional · ||--o| = uno a uno
+' =====================================================================
+title UnCalificado — Modelo entidad-relación (esquema_bd.sql v1.2)\n<size:11>42 tablas · vista compacta: PK, FK y columnas únicas · * = NOT NULL</size>
+hide circle
+skinparam linetype ortho
+skinparam shadowing false
+skinparam nodesep 40
+skinparam ranksep 70
+skinparam defaultFontSize 11
+skinparam class {
+  BorderColor #546E7A
+  ArrowColor #546E7A
+}
+
+package "Cuentas y privacidad" #E3F2FD {
+  entity "usuarios" as usuarios {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * correo : VARCHAR(254) <<UQ>>
+  }
+  entity "avisos_privacidad" as avisos_privacidad {
+    * **version** : INT↑ <<PK>>
+    --
+  }
+  entity "consentimientos" as consentimientos {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * usuario_id : CHAR(36) <<FK>>
+    * version_aviso : INT↑ <<FK>>
+  }
+  entity "solicitudes_arco" as solicitudes_arco {
+    * **folio** : VARCHAR(20) <<PK>>
+    --
+    * usuario_id : CHAR(36) <<FK>>
+      atendida_por : CHAR(36) <<FK>>
+  }
+  entity "notificaciones" as notificaciones {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * usuario_id : CHAR(36) <<FK>>
+  }
+}
+
+package "Proveedores y verificación" #E8F5E9 {
+  entity "proveedores" as proveedores {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * usuario_id : CHAR(36) <<FK>> <<UQ>>
+    * modalidad : ENUM(4) <<FK>>
+  }
+  entity "trabajadores_independientes" as trabajadores_independientes {
+    * **proveedor_id** : CHAR(36) <<PK>> <<FK>>
+    --
+  }
+  entity "organizaciones_contratistas" as organizaciones_contratistas {
+    * **proveedor_id** : CHAR(36) <<PK>> <<FK>>
+    --
+  }
+  entity "oficios" as oficios {
+    * **clave** : VARCHAR(30) <<PK>>
+    --
+    * nombre : VARCHAR(80) <<UQ>>
+  }
+  entity "proveedor_oficios" as proveedor_oficios {
+    * **proveedor_id** : CHAR(36) <<PK>> <<FK>>
+    * **oficio** : VARCHAR(30) <<PK>> <<FK>>
+    --
+  }
+  entity "proveedor_zonas" as proveedor_zonas {
+    * **proveedor_id** : CHAR(36) <<PK>> <<FK>>
+    * **municipio** : ENUM(6) <<PK>>
+    * **colonia** : VARCHAR(120) <<PK>>
+    --
+  }
+  entity "fechas_no_disponibles" as fechas_no_disponibles {
+    * **proveedor_id** : CHAR(36) <<PK>> <<FK>>
+    * **fecha** : DATE <<PK>>
+    --
+  }
+  entity "franjas_bloqueadas" as franjas_bloqueadas {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * proveedor_id : CHAR(36) <<FK>>
+      cita_id : CHAR(36) <<FK>> <<UQ>>
+  }
+  entity "fotos_portafolio" as fotos_portafolio {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * trabajador_id : CHAR(36) <<FK>>
+    * clave_almacenamiento : VARCHAR(255) <<UQ>>
+  }
+  entity "verificaciones" as verificaciones {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * proveedor_id : CHAR(36) <<FK>>
+      resuelta_por : CHAR(36) <<FK>>
+  }
+  entity "documentos_verificacion" as documentos_verificacion {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * verificacion_id : CHAR(36) <<FK>>
+    * clave_almacenamiento : VARCHAR(255) <<UQ>>
+  }
+}
+
+package "Solicitud y agente de IA" #FFF8E1 {
+  entity "solicitudes" as solicitudes {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * cliente_id : CHAR(36) <<FK>>
+      proveedor_id : CHAR(36) <<FK>>
+    * oficio : VARCHAR(30) <<FK>>
+  }
+  entity "historial_estados_solicitud" as historial_estados_solicitud {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+    * cambiado_por : CHAR(36) <<FK>>
+  }
+  entity "conversaciones" as conversaciones {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * cliente_id : CHAR(36) <<FK>>
+      solicitud_id : CHAR(36) <<FK>> <<UQ>>
+  }
+  entity "mensajes_conversacion" as mensajes_conversacion {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * conversacion_id : CHAR(36) <<FK>>
+  }
+  entity "adjuntos" as adjuntos {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+      mensaje_conversacion_id : CHAR(36) <<FK>>
+    * clave_almacenamiento : VARCHAR(255) <<UQ>>
+  }
+  entity "representaciones_visuales" as representaciones_visuales {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+  }
+  entity "representacion_adjuntos" as representacion_adjuntos {
+    * **representacion_id** : CHAR(36) <<PK>> <<FK>>
+    * **adjunto_id** : CHAR(36) <<PK>> <<FK>>
+    --
+  }
+  entity "casos_soporte" as casos_soporte {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * cliente_id : CHAR(36) <<FK>>
+      solicitud_id : CHAR(36) <<FK>>
+      conversacion_id : CHAR(36) <<FK>>
+      atendido_por : CHAR(36) <<FK>>
+  }
+}
+
+package "Búsqueda, invitación y citas" #F3E5F5 {
+  entity "conjuntos_recomendaciones" as conjuntos_recomendaciones {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+  }
+  entity "recomendaciones" as recomendaciones {
+    * **conjunto_id** : CHAR(36) <<PK>> <<FK>>
+    * **posicion** : TINYINT↑ <<PK>>
+    --
+    * proveedor_id : CHAR(36) <<FK>>
+  }
+  entity "invitaciones" as invitaciones {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+    * proveedor_id : CHAR(36) <<FK>>
+  }
+  entity "citas" as citas {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+    * proveedor_id : CHAR(36) <<FK>>
+  }
+  entity "modificaciones_cita" as modificaciones_cita {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * cita_id : CHAR(36) <<FK>>
+    * solicitada_por : CHAR(36) <<FK>>
+  }
+}
+
+package "Propuestas y control de costos" #FBE9E7 {
+  entity "propuestas" as propuestas {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+    * proveedor_id : CHAR(36) <<FK>>
+  }
+  entity "versiones_propuesta" as versiones_propuesta {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * propuesta_id : CHAR(36) <<FK>>
+  }
+  entity "conceptos_propuesta" as conceptos_propuesta {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * version_propuesta_id : CHAR(36) <<FK>>
+  }
+  entity "cambios" as cambios {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+  }
+  entity "cambio_evidencias" as cambio_evidencias {
+    * **cambio_id** : CHAR(36) <<PK>> <<FK>>
+    * **adjunto_id** : CHAR(36) <<PK>> <<FK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+  }
+  entity "contrapropuestas" as contrapropuestas {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * cambio_id : CHAR(36) <<FK>>
+  }
+  entity "analisis_ia" as analisis_ia {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * cambio_id : CHAR(36) <<FK>> <<UQ>>
+  }
+  entity "versiones_presupuesto" as versiones_presupuesto {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+      version_propuesta_id : CHAR(36) <<FK>> <<UQ>>
+      cambio_id : CHAR(36) <<FK>> <<UQ>>
+  }
+  entity "registros_bitacora" as registros_bitacora {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+    * autor_id : CHAR(36) <<FK>>
+      version_propuesta_id : CHAR(36) <<FK>>
+      cambio_id : CHAR(36) <<FK>>
+      anterior_id : CHAR(36) <<FK>> <<UQ>>
+      corrige_registro_id : CHAR(36) <<FK>>
+    * hash_encadenado : CHAR(64) <<UQ>>
+  }
+}
+
+package "Seguimiento, mensajes y evaluaciones" #E0F2F1 {
+  entity "mensajes_canal" as mensajes_canal {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+    * emisor_id : CHAR(36) <<FK>>
+  }
+  entity "solicitudes_cierre" as solicitudes_cierre {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+  }
+  entity "revelaciones_domicilio" as revelaciones_domicilio {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+    * trabajador_id : CHAR(36) <<FK>>
+  }
+  entity "evaluaciones" as evaluaciones {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * solicitud_id : CHAR(36) <<FK>>
+    * evaluador_id : CHAR(36) <<FK>>
+    * evaluado_id : CHAR(36) <<FK>>
+  }
+}
+
+' ── Relaciones (una por FK; las FK compuestas con columna de rol generada
+'    se dibujan con su columna real) ──
+mensajes_conversacion |o--o{ adjuntos : mensaje_conversacion_id
+solicitudes ||--o{ adjuntos : solicitud_id
+cambios ||--o| analisis_ia : cambio_id
+adjuntos ||--o{ cambio_evidencias : solicitud_id, adjunto_id
+cambios ||--o{ cambio_evidencias : solicitud_id, cambio_id
+solicitudes ||--o{ cambios : solicitud_id
+usuarios |o--o{ casos_soporte : atendido_por
+usuarios ||--o{ casos_soporte : cliente_id
+conversaciones |o--o{ casos_soporte : conversacion_id
+solicitudes |o--o{ casos_soporte : solicitud_id
+proveedores ||--o{ citas : proveedor_id
+solicitudes ||--o{ citas : solicitud_id
+versiones_propuesta ||--o{ conceptos_propuesta : version_propuesta_id
+solicitudes ||--o{ conjuntos_recomendaciones : solicitud_id
+avisos_privacidad ||--o{ consentimientos : version_aviso
+usuarios ||--o{ consentimientos : usuario_id
+cambios ||--o{ contrapropuestas : cambio_id
+usuarios ||--o{ conversaciones : cliente_id
+solicitudes |o--o| conversaciones : solicitud_id
+verificaciones ||--o{ documentos_verificacion : verificacion_id
+usuarios ||--o{ evaluaciones : evaluado_id
+usuarios ||--o{ evaluaciones : evaluador_id
+solicitudes ||--o{ evaluaciones : solicitud_id
+proveedores ||--o{ fechas_no_disponibles : proveedor_id
+trabajadores_independientes ||--o{ fotos_portafolio : trabajador_id
+citas |o--o| franjas_bloqueadas : cita_id
+proveedores ||--o{ franjas_bloqueadas : proveedor_id
+solicitudes ||--o{ historial_estados_solicitud : solicitud_id
+usuarios ||--o{ historial_estados_solicitud : cambiado_por
+proveedores ||--o{ invitaciones : proveedor_id
+solicitudes ||--o{ invitaciones : solicitud_id
+usuarios ||--o{ mensajes_canal : emisor_id
+solicitudes ||--o{ mensajes_canal : solicitud_id
+conversaciones ||--o{ mensajes_conversacion : conversacion_id
+citas ||--o{ modificaciones_cita : cita_id
+usuarios ||--o{ modificaciones_cita : solicitada_por
+usuarios ||--o{ notificaciones : usuario_id
+proveedores ||--o| organizaciones_contratistas : proveedor_id
+proveedores ||--o{ propuestas : proveedor_id
+solicitudes ||--o{ propuestas : solicitud_id
+oficios ||--o{ proveedor_oficios : oficio
+proveedores ||--o{ proveedor_oficios : proveedor_id
+proveedores ||--o{ proveedor_zonas : proveedor_id
+usuarios ||--o{ proveedores : usuario_id, modalidad
+conjuntos_recomendaciones ||--o{ recomendaciones : conjunto_id
+proveedores ||--o{ recomendaciones : proveedor_id
+registros_bitacora |o--o{ registros_bitacora : solicitud_id, anterior_id
+usuarios ||--o{ registros_bitacora : autor_id
+cambios |o--o{ registros_bitacora : solicitud_id, cambio_id
+registros_bitacora |o--o{ registros_bitacora : solicitud_id, corrige_registro_id
+solicitudes ||--o{ registros_bitacora : solicitud_id
+versiones_propuesta |o--o{ registros_bitacora : version_propuesta_id
+adjuntos ||--o{ representacion_adjuntos : adjunto_id
+representaciones_visuales ||--o{ representacion_adjuntos : representacion_id
+solicitudes ||--o{ representaciones_visuales : solicitud_id
+solicitudes ||--o{ revelaciones_domicilio : solicitud_id
+trabajadores_independientes ||--o{ revelaciones_domicilio : trabajador_id
+usuarios ||--o{ solicitudes : cliente_id
+oficios ||--o{ solicitudes : oficio
+proveedores |o--o{ solicitudes : proveedor_id
+usuarios |o--o{ solicitudes_arco : atendida_por
+usuarios ||--o{ solicitudes_arco : usuario_id
+solicitudes ||--o{ solicitudes_cierre : solicitud_id
+proveedores ||--o| trabajadores_independientes : proveedor_id
+usuarios |o--o{ verificaciones : resuelta_por
+proveedores ||--o{ verificaciones : proveedor_id
+cambios |o--o{ versiones_presupuesto : solicitud_id, cambio_id
+solicitudes ||--o{ versiones_presupuesto : solicitud_id
+versiones_propuesta |o--o| versiones_presupuesto : version_propuesta_id
+propuestas ||--o{ versiones_propuesta : propuesta_id
+
+legend right
+  |= Símbolo |= Significado |
+  | * columna | NOT NULL |
+  | <<PK>> / <<FK>> / <<UQ>> | llave primaria / foránea / única |
+  | línea con doble barra → pata de gallo | uno (FK obligatoria) a muchos |
+  | línea con círculo y barra → pata de gallo | cero o uno (FK opcional) a muchos |
+  | línea con doble barra → círculo y barra | uno a cero o uno (FK única) |
+  | ENUM(n) | enumeración de n valores (ver esquema_bd.sql) |
+  | ↑ | UNSIGNED |
+endlegend
+@enduml

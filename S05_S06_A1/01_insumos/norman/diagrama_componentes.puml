@@ -1,0 +1,90 @@
+@startuml diagrama_componentes
+' =====================================================================
+' UnCalificado — Diagrama de componentes (C4, nivel de contenedores)
+' Fuente funcional: S03_A1/SRS_equipo.md.
+' Arquitectura derivada y revisada contra los requerimientos consolidados.
+' Vista arquitectónica: frontend, backend, base de datos, almacenamiento de
+' archivos, servicio externo de IA y sus interfaces. Los módulos del backend se
+' muestran solo de forma conceptual: NO son microservicios.
+' Tecnologías marcadas como "decisión de implementación" provienen de
+' S01_A2/stack_decision.md; el SRS no las exige.
+' =====================================================================
+!include <C4/C4_Component>
+
+title UnCalificado — Diagrama de componentes (C4, nivel de contenedores)
+
+LAYOUT_TOP_DOWN()
+
+Person(usuario, "Usuario", "Cliente, trabajador independiente, organización de contratistas o administrador (SRS §2.4)")
+
+System_Boundary(uc, "UnCalificado") {
+
+  Container(web, "Aplicación web", "SPA responsive · React + Vite + TypeScript (decisión de implementación)", "Interfaz para los cuatro actores y cliente de la API (RNF-02).")
+  Container(app, "App móvil nativa", "Tecnología no definida", "Mismas funciones por rol que la web y cliente de la misma API (RE-01, RNF-02).")
+
+  Container_Boundary(api, "Backend API — monolito modular (una sola unidad desplegable) · Node.js + Express + TypeScript (decisión de implementación)") {
+
+    Component(capa_api, "Capa de API REST /api/v1", "Express", "Rutas, autenticación JWT, control de acceso por rol y propiedad, validación de entradas (RNF-03, RNF-04, RNF-11).")
+
+    Boundary(modulos, "Capa de aplicación y dominio — módulos internos") {
+      Component(m_id, "Identidad y acceso", "", "Cuentas y sesiones (RF-01)")
+      Component(m_prov, "Proveedores y verificación", "", "Perfiles, disponibilidad y marcas (RF-03 a RF-12)")
+      Component(m_sol, "Solicitudes", "", "Borrador, adjuntos y captura manual (RF-16 a RF-21)")
+      Component(m_ia, "Conversación / Agente de IA", "", "Diálogo, clasificación y resúmenes (RF-13 a RF-15, RF-19, RF-23, RF-42)")
+      Component(m_sop, "Soporte", "", "Casos que atiende el administrador (RF-22)")
+      Component(m_rec, "Búsqueda y recomendaciones", "", "Compatibles, 3–4 opciones y selección (RF-26 a RF-32)")
+      Component(m_cit, "Citas", "", "Doble confirmación y franjas (RF-33 a RF-37)")
+      Component(m_prop, "Propuestas y cambios", "", "Versiones, cambios y presupuesto (RF-38 a RF-44, RF-55)")
+      Component(m_seg, "Seguimiento y cierre", "", "Estados del proyecto y cierre (RF-45, RF-47, RF-48)")
+      Component(m_msg, "Mensajería", "", "Canal interno sin teléfonos (RF-46)")
+      Component(m_eva, "Evaluaciones", "", "Calificación en ambos sentidos (RF-49 a RF-51)")
+      Component(m_priv, "Privacidad y ARCO", "", "Consentimiento, domicilio y ARCO (RF-02, RF-24, RF-52 a RF-54)")
+      Component(m_not, "Notificaciones y plazos", "", "Avisos y vencimientos programados (RF-32, RF-34, RF-36, RF-39, RF-41, RF-48, RF-51)")
+      Component(m_aud, "Auditoría", "", "Bitácora inalterable de decisiones (RNF-12, RD-17)")
+    }
+
+    Component(capa_inf, "Capa de infraestructura", "Adaptadores", "Acceso a datos, a archivos y al servicio de IA; aísla a los módulos de la tecnología concreta.")
+  }
+
+  ContainerDb(db, "Base de datos", "Motor no definido por el SRS", "Estado del dominio y bitácora (RNF-12, RNF-13).")
+  ContainerDb(files, "Almacenamiento de archivos", "Tecnología no definida por el SRS", "Fotos, videos, documentos y representaciones visuales con acceso por solicitud (RNF-05, RNF-06).")
+}
+
+System_Ext(ia, "Servicio externo de IA", "Proveedor no definido por el SRS (§2.6, RE-04). Si no está disponible: captura manual (RF-21).")
+
+' Organización visual de los módulos en filas (sin significado de dependencia)
+Lay_D(m_id, m_sol)
+Lay_D(m_sol, m_cit)
+Lay_D(m_cit, m_msg)
+Lay_D(m_msg, m_not)
+Lay_D(m_prov, m_ia)
+Lay_D(m_ia, m_prop)
+Lay_D(m_prop, m_eva)
+Lay_D(m_eva, m_aud)
+Lay_D(m_sop, m_rec)
+Lay_D(m_rec, m_seg)
+Lay_D(m_seg, m_priv)
+Lay_R(web, app)
+
+Rel(usuario, web, "Usa", "HTTPS")
+Rel(usuario, app, "Usa", "HTTPS")
+Rel(web, capa_api, "Invoca", "REST · JSON/HTTPS · JWT")
+Rel(app, capa_api, "Invoca", "REST · JSON/HTTPS · JWT")
+Rel(capa_api, modulos, "Enruta cada petición autorizada al módulo dueño")
+Rel(modulos, capa_inf, "Usa puertos de persistencia, archivos e IA")
+Rel(capa_inf, db, "Lee y escribe", "conexión cifrada")
+Rel(capa_inf, files, "Guarda y lee archivos", "HTTPS")
+Rel(capa_inf, ia, "Solicita conversación, clasificación, recomendación y análisis", "HTTPS")
+
+note right of ia
+  Los servicios externos no aprueban
+  ni modifican datos sin la acción de
+  un usuario autorizado (RE-04).
+end note
+
+note bottom of files
+  Base de datos, almacenamiento y proveedor de IA
+  se mantienen abstractos: el SRS no los define.
+end note
+
+@enduml

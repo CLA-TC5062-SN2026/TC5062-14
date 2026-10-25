@@ -1,0 +1,144 @@
+@startuml diagrama_er_1
+' =====================================================================
+' UnCalificado — Diagrama entidad-relación de la base de datos (MySQL 8)
+' GENERADO por generar_er.py a partir de information_schema después de
+' cargar esquema_bd.sql. No editar a mano: regenerar si cambia el SQL.
+' Notación: * = NOT NULL · <<PK>> · <<FK>> · <<UQ>> (único) ·
+' ||--o{ = uno a muchos · |o--o{ = FK opcional · ||--o| = uno a uno
+' =====================================================================
+title UnCalificado — Modelo entidad-relación · Cuentas y privacidad\n<size:11>5 tablas del módulo con todas sus columnas · en gris, tablas de otros módulos relacionadas · * = NOT NULL</size>
+hide circle
+skinparam linetype ortho
+skinparam shadowing false
+skinparam nodesep 40
+skinparam ranksep 70
+skinparam defaultFontSize 11
+skinparam class {
+  BorderColor #546E7A
+  ArrowColor #546E7A
+}
+
+package "Cuentas y privacidad" #E3F2FD {
+  entity "usuarios" as usuarios {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * nombre : VARCHAR(120)
+    * correo : VARCHAR(254) <<UQ>>
+    * contrasena_hash : CHAR(60)
+      telefono : CHAR(10)
+    * rol : ENUM(4)
+    * estado : ENUM('ACTIVA','INACTIVA','ANONIMIZADA')
+    * declara_mayor_edad : BOOLEAN
+    * segundo_factor_activo : BOOLEAN
+      segundo_factor_secreto : VARCHAR(128)
+  }
+  entity "avisos_privacidad" as avisos_privacidad {
+    * **version** : INT↑ <<PK>>
+    --
+    * contenido : TEXT
+  }
+  entity "consentimientos" as consentimientos {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * usuario_id : CHAR(36) <<FK>>
+    * version_aviso : INT↑ <<FK>>
+  }
+  entity "solicitudes_arco" as solicitudes_arco {
+    * **folio** : VARCHAR(20) <<PK>>
+    --
+    * usuario_id : CHAR(36) <<FK>>
+    * derecho : ENUM(4)
+    * fecha_limite : DATE
+      respuesta : VARCHAR(4000)
+      respondida_en : DATETIME
+      atendida_por : CHAR(36) <<FK>>
+  }
+  entity "notificaciones" as notificaciones {
+    * **id** : CHAR(36) <<PK>>
+    --
+    * usuario_id : CHAR(36) <<FK>>
+    * tipo : ENUM(21)
+    * titulo : VARCHAR(150)
+      cuerpo : VARCHAR(1000)
+      referencia_tipo : VARCHAR(40)
+      referencia_id : VARCHAR(36)
+    * leida : BOOLEAN
+  }
+}
+
+package "Proveedores y verificación" #F5F5F5 {
+  entity "proveedores" as proveedores #EEEEEE {
+    * id <<PK>>
+  }
+  entity "verificaciones" as verificaciones #EEEEEE {
+    * id <<PK>>
+  }
+}
+
+package "Solicitud y agente de IA" #F5F5F5 {
+  entity "solicitudes" as solicitudes #EEEEEE {
+    * id <<PK>>
+  }
+  entity "historial_estados_solicitud" as historial_estados_solicitud #EEEEEE {
+    * id <<PK>>
+  }
+  entity "conversaciones" as conversaciones #EEEEEE {
+    * id <<PK>>
+  }
+  entity "casos_soporte" as casos_soporte #EEEEEE {
+    * id <<PK>>
+  }
+}
+
+package "Búsqueda, invitación y citas" #F5F5F5 {
+  entity "modificaciones_cita" as modificaciones_cita #EEEEEE {
+    * id <<PK>>
+  }
+}
+
+package "Propuestas y control de costos" #F5F5F5 {
+  entity "registros_bitacora" as registros_bitacora #EEEEEE {
+    * id <<PK>>
+  }
+}
+
+package "Seguimiento, mensajes y evaluaciones" #F5F5F5 {
+  entity "mensajes_canal" as mensajes_canal #EEEEEE {
+    * id <<PK>>
+  }
+  entity "evaluaciones" as evaluaciones #EEEEEE {
+    * id <<PK>>
+  }
+}
+
+' ── Relaciones (una por FK; las FK compuestas con columna de rol generada
+'    se dibujan con su columna real) ──
+usuarios |o--o{ casos_soporte : atendido_por
+usuarios ||--o{ casos_soporte : cliente_id
+avisos_privacidad ||--o{ consentimientos : version_aviso
+usuarios ||--o{ consentimientos : usuario_id
+usuarios ||--o{ conversaciones : cliente_id
+usuarios ||--o{ evaluaciones : evaluado_id
+usuarios ||--o{ evaluaciones : evaluador_id
+usuarios ||--o{ historial_estados_solicitud : cambiado_por
+usuarios ||--o{ mensajes_canal : emisor_id
+usuarios ||--o{ modificaciones_cita : solicitada_por
+usuarios ||--o{ notificaciones : usuario_id
+usuarios ||--o{ proveedores : usuario_id, modalidad
+usuarios ||--o{ registros_bitacora : autor_id
+usuarios ||--o{ solicitudes : cliente_id
+usuarios |o--o{ solicitudes_arco : atendida_por
+usuarios ||--o{ solicitudes_arco : usuario_id
+usuarios |o--o{ verificaciones : resuelta_por
+
+legend right
+  |= Símbolo |= Significado |
+  | * columna | NOT NULL |
+  | <<PK>> / <<FK>> / <<UQ>> | llave primaria / foránea / única |
+  | línea con doble barra → pata de gallo | uno (FK obligatoria) a muchos |
+  | línea con círculo y barra → pata de gallo | cero o uno (FK opcional) a muchos |
+  | línea con doble barra → círculo y barra | uno a cero o uno (FK única) |
+  | ENUM(n) | enumeración de n valores (ver esquema_bd.sql) |
+  | ↑ | UNSIGNED |
+endlegend
+@enduml

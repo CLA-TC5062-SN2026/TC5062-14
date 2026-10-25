@@ -1,0 +1,96 @@
+@startuml arquitectura_05_despliegue
+' Diagrama de despliegue UML — UnCalificado (piloto y ambiente de pruebas)
+' Propuesta de despliegue derivada de ADR-001 (monolito modular) y de la DoD v1.0 (despliegue manual,
+' sin CI/CD todavía). Las tecnologías de infraestructura (Docker, Nginx, Gunicorn) son decisiones de
+' diseño de este documento: el SRS no las fija. El proveedor cloud queda por definir.
+
+skinparam shadowing false
+skinparam linetype ortho
+skinparam node {
+  BackgroundColor #FFFFFF
+  BorderColor #455A64
+}
+skinparam artifact {
+  BackgroundColor #E8F5E9
+  BorderColor #2E7D32
+}
+skinparam artifact<<previsto>> {
+  BackgroundColor #ECEFF1
+  BorderColor #78909C
+}
+
+title UnCalificado — Diagrama de despliegue (piloto)
+
+node "Dispositivo del usuario\n(celular común o computadora)" as DEV {
+  node "Navegador web\n(móvil o escritorio)" as NAV {
+    artifact "Aplicación web responsive\n(HTML/CSS/JS)" as A_WEB <<previsto>>
+  }
+  node "Sistema operativo móvil\n(Android / iOS)" as MOV {
+    artifact "App nativa" as A_APP <<previsto>>
+  }
+}
+
+node "Dispositivo del administrador\n(computadora)" as ADM {
+  node "Navegador web" as NAV2
+}
+
+cloud "Internet" as NET
+
+node "Servidor cloud\n<<VM Linux, proveedor por definir>>" as VM {
+  node "Docker Engine\n(docker compose)" as DOCKER {
+
+    node "Contenedor: proxy\n<<Nginx>>" as N_PROXY {
+      artifact "Terminación TLS\n(certificado HTTPS, RE-09)" as A_TLS <<previsto>>
+      artifact "Archivos estáticos\nde la web" as A_STATIC <<previsto>>
+    }
+
+    node "Contenedor: api\n<<Python 3.10+ · Gunicorn>>" as N_API {
+      artifact "backend_uncalificado\n(Flask 3.1, app.create_app)" as A_API
+      artifact ".env\n(JWT_SECRET, DB_*, BCRYPT_ROUNDS)\n— no versionado —" as A_ENV
+    }
+
+    node "Contenedor: planificador\n<<Python>>" as N_JOBS {
+      artifact "Procesos programados\n(expiraciones 4 h / 24 h / 72 h,\nrecordatorios, avisos)" as A_JOBS <<previsto>>
+    }
+
+    node "Contenedor: db\n<<MySQL 8>>" as N_DB {
+      database "uncalificado\n(schema.sql)" as A_DB
+    }
+  }
+
+  folder "Volumen: datos MySQL" as V_DB
+  folder "Volumen: archivos\n(adjuntos, portafolio,\ndocumentos de verificación)" as V_FILES
+}
+
+node "Proveedor de IA externo\n<<SaaS>>" as IA
+
+DEV -- NET : HTTPS 443
+ADM -- NET : HTTPS 443
+NET -- N_PROXY : HTTPS 443
+N_PROXY -- N_API : HTTP 8000\n(red interna de Docker)\n/api/*
+N_API -- N_DB : TCP 3306\n(red interna, sin exposición pública)
+N_JOBS -- N_DB : TCP 3306
+N_DB -- V_DB
+N_API -- V_FILES
+N_API -- IA : HTTPS (saliente)
+
+note right of N_API
+  Una o más réplicas de la API: la API no guarda
+  estado (JWT), así que el proxy puede balancear
+  varias instancias si RNF-08 lo exige.
+  Healthcheck: GET /api/health
+end note
+
+note bottom of N_DB
+  Solo accesible desde la red interna.
+  Respaldo diario del volumen
+  (valores de RPO/RTO no adoptados, RNF-13).
+end note
+
+note top of DOCKER
+  Ambiente de pruebas del Sprint 1 = misma topología en una VM.
+  Despliegue manual con el procedimiento del README y prueba
+  de humo (DoD-07); se automatiza cuando exista el CI/CD (Sprint 3).
+end note
+
+@enduml
