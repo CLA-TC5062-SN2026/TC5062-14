@@ -1,0 +1,94 @@
+# Revisión crítica: salidas originales del script de 34 comprobaciones en navegador
+# Microsoft Edge (headless) vía playwright-core 1.64.1 · servidor de desarrollo http://localhost:5173/
+#
+# PROCEDENCIA: estas salidas se mostraron en la terminal durante la revisión crítica (3 de noviembre de 2026)
+# y no se guardaron en un archivo en ese momento. Se transcriben aquí sin cambios desde el registro de la sesión.
+#
+# Limitación: solo se conserva la versión CORREGIDA del script (evidencias/revisar.mjs). La versión con la que se
+# obtuvo la ejecución "antes" no se guardó. Las diferencias están descritas en revision_componentes.md, sección 1:
+#   - el rol se buscaba como texto exacto («Cliente»), cuando el elemento contiene «Rol: Cliente»;
+#   - el botón de envío se localizaba por su nombre accesible, que cambia durante la carga;
+#     ahora se usa el selector form button[type="submit"].
+# De las 9 fallas de la ejecución "antes", 3 son reales (pérdida de foco) y 6 se deben a esos dos errores del script.
+#
+# Para una ejecución reproducible sobre el código actual, ver revision_navegador_reejecucion.txt.
+
+======================================================================
+EJECUCIÓN "antes" (código con disabled nativo en Button; versión inicial del script)
+======================================================================
+OK   Sin desplazamiento horizontal a 320px — scrollWidth=320 clientWidth=320
+OK   Botón "Menú" visible a 320px
+OK   Sin desplazamiento horizontal a 360px — scrollWidth=360 clientWidth=360
+OK   Botón "Menú" visible a 360px
+OK   Sin desplazamiento horizontal con menú abierto a 360px
+OK   Sin desplazamiento horizontal a 768px — scrollWidth=768 clientWidth=768
+OK   Botón "Menú" oculto a 768px
+OK   Sin desplazamiento horizontal a 1280px — scrollWidth=1280 clientWidth=1280
+OK   Botón "Menú" oculto a 1280px
+OK   Primer Tab: enlace "Saltar al contenido" visible — a "Saltar al contenido principal"
+OK   Enter en el enlace de salto mueve el foco a <main> — main#contenido "Demostración con datos ficticios. Esta p"
+OK   Tab llega al botón "Menú" — button "Menú"
+OK   Enter abre el menú (aria-expanded=true)
+OK   Tab entra al primer enlace del menú — a "Inicio"
+OK   Escape cierra el menú y devuelve el foco al botón — button "Menú", aria-expanded=false
+FALLA Con sesión: nombre y rol visibles en el menú
+OK   Cerrar sesión (Enter) mueve el foco a "Iniciar sesión" — a "Iniciar sesión"
+OK   Elegir un enlace cierra el menú
+FALLA Rol cliente: etiqueta y enlaces — UnCalificado | Inicio | Botones | Mis solicitudes
+FALLA Rol trabajador: etiqueta y enlaces — UnCalificado | Inicio | Botones | Solicitudes asignadas
+FALLA Rol organizacion: etiqueta y enlaces — UnCalificado | Inicio | Botones | Solicitudes asignadas
+FALLA Rol administrador: etiqueta y enlaces — UnCalificado | Inicio | Botones
+OK   Envío vacío: foco en el correo con aria-invalid — input#campo-_r_3_ "correo"
+OK   aria-describedby del correo contiene el mensaje de error — !Error: Escribe tu correo electrónico.
+OK   La contraseña también muestra su error
+OK   Correo mal formado: mensaje específico
+OK   Durante la carga: botón con aria-busy — {"disabled":true,"ariaDisabled":null,"texto":"Iniciando sesión (simulación)…Iniciar sesión"}
+FALLA Durante la carga: el foco no se pierde (no queda en BODY) — BODY
+FALLA Reintentos durante la carga no generan envíos nuevos — envíos=2
+OK   Al terminar: mensaje de simulación en role=status
+FALLA Al terminar: foco en un control del formulario — BODY
+OK   Simulación 401: alerta con el mensaje real del backend
+FALLA "Probar estado de carga": el foco se conserva durante la carga — BODY
+OK   Sin errores en la consola del navegador
+
+Total: 34 comprobaciones, 9 fallas
+
+======================================================================
+EJECUCIÓN "después" (Button con aria-disabled; campos con readOnly; script corregido)
+======================================================================
+OK   Sin desplazamiento horizontal a 320px — scrollWidth=320 clientWidth=320
+OK   Botón "Menú" visible a 320px
+OK   Sin desplazamiento horizontal a 360px — scrollWidth=360 clientWidth=360
+OK   Botón "Menú" visible a 360px
+OK   Sin desplazamiento horizontal con menú abierto a 360px
+OK   Sin desplazamiento horizontal a 768px — scrollWidth=768 clientWidth=768
+OK   Botón "Menú" oculto a 768px
+OK   Sin desplazamiento horizontal a 1280px — scrollWidth=1280 clientWidth=1280
+OK   Botón "Menú" oculto a 1280px
+OK   Primer Tab: enlace "Saltar al contenido" visible — a "Saltar al contenido principal"
+OK   Enter en el enlace de salto mueve el foco a <main> — main#contenido "Demostración con datos ficticios. Esta p"
+OK   Tab llega al botón "Menú" — button "Menú"
+OK   Enter abre el menú (aria-expanded=true)
+OK   Tab entra al primer enlace del menú — a "Inicio"
+OK   Escape cierra el menú y devuelve el foco al botón — button "Menú", aria-expanded=false
+OK   Con sesión: nombre y rol visibles en el menú
+OK   Cerrar sesión (Enter) mueve el foco a "Iniciar sesión" — a "Iniciar sesión"
+OK   Elegir un enlace cierra el menú
+OK   Rol cliente: etiqueta y enlaces — UnCalificado | Inicio | Botones | Mis solicitudes
+OK   Rol trabajador: etiqueta y enlaces — UnCalificado | Inicio | Botones | Solicitudes asignadas
+OK   Rol organizacion: etiqueta y enlaces — UnCalificado | Inicio | Botones | Solicitudes asignadas
+OK   Rol administrador: etiqueta y enlaces — UnCalificado | Inicio | Botones
+OK   Envío vacío: foco en el correo con aria-invalid — input#campo-_r_3_ "correo"
+OK   aria-describedby del correo contiene el mensaje de error — !Error: Escribe tu correo electrónico.
+OK   La contraseña también muestra su error
+OK   Correo mal formado: mensaje específico
+OK   Durante la carga: aria-busy y aria-disabled, sin disabled nativo — {"disabled":false,"ariaDisabled":"true","texto":"Iniciando sesión (simulación)…Iniciar sesión"}
+OK   Durante la carga: el foco no se pierde (no queda en BODY) — input#campo-_r_4_ "contrasena"
+OK   Reintentos durante la carga no generan envíos nuevos — envíos=1
+OK   Al terminar: mensaje de simulación en role=status
+OK   Al terminar: foco en un control del formulario — button "Iniciar sesión"
+OK   Simulación 401: alerta con el mensaje real del backend
+OK   "Probar estado de carga": el foco se conserva durante la carga — button "Procesando…Probar estado de carga (2 s)"
+OK   Sin errores en la consola del navegador
+
+Total: 34 comprobaciones, 0 fallas

@@ -1,0 +1,47 @@
+# Auditoría en navegador DESPUÉS de las correcciones de la Parte 3
+# Microsoft Edge (headless) vía playwright-core 1.64.1 · axe-core 4.12.1 (dependencia de jest-axe)
+OK    [axe] Sin violaciones WCAG 2.0/2.1 A-AA: estado inicial a 360 px — axe 4.12.1; reglas aprobadas=28; violaciones=[]; revisión manual=[]
+OK    [axe] Sin violaciones WCAG 2.0/2.1 A-AA: formulario con errores a 360 px — axe 4.12.1; reglas aprobadas=28; violaciones=[]; revisión manual=[]
+OK    [axe] Sin violaciones WCAG 2.0/2.1 A-AA: alerta 401 simulada a 360 px — axe 4.12.1; reglas aprobadas=28; violaciones=[]; revisión manual=[]
+OK    [axe] Sin violaciones WCAG 2.0/2.1 A-AA: menú móvil abierto con sesión a 360 px — axe 4.12.1; reglas aprobadas=28; violaciones=[]; revisión manual=[]
+OK    [axe] Sin violaciones WCAG 2.0/2.1 A-AA: escritorio 1280 px con sesión — axe 4.12.1; reglas aprobadas=28; violaciones=[]; revisión manual=[]
+OK    [axe] Sin violaciones WCAG 2.0/2.1 A-AA: formulario en carga (escritorio) — axe 4.12.1; reglas aprobadas=27; violaciones=[]; revisión manual=[]
+OK    [reflow] Sin desplazamiento horizontal — 320 px — scrollWidth=320, clientWidth=320
+OK    [reflow] Sin desplazamiento horizontal con errores — 320 px
+OK    [reflow] Sin desplazamiento horizontal con menú abierto — 320 px
+OK    [reflow] "Cerrar sesión" visible al recibir el foco con el menú abierto — 320 px — top=286, bottom=330, alto de ventana=640
+OK    [reflow] Sin desplazamiento horizontal — 360 px — scrollWidth=360, clientWidth=360
+OK    [reflow] Sin desplazamiento horizontal con errores — 360 px
+OK    [reflow] Sin desplazamiento horizontal con menú abierto — 360 px
+OK    [reflow] "Cerrar sesión" visible al recibir el foco con el menú abierto — 360 px — top=286, bottom=330, alto de ventana=640
+OK    [reflow] Sin desplazamiento horizontal — zoom 200 % (1280×1024 → 640×512 CSS px) — scrollWidth=640, clientWidth=640
+OK    [reflow] Sin desplazamiento horizontal con errores — zoom 200 % (1280×1024 → 640×512 CSS px)
+OK    [reflow] Sin desplazamiento horizontal con menú abierto — zoom 200 % (1280×1024 → 640×512 CSS px)
+OK    [reflow] "Cerrar sesión" visible al recibir el foco con el menú abierto — zoom 200 % (1280×1024 → 640×512 CSS px) — top=286, bottom=330, alto de ventana=512
+OK    [reflow] Sin desplazamiento horizontal — zoom 400 % (1280×1024 → 320×256 CSS px) — scrollWidth=320, clientWidth=320
+OK    [reflow] Sin desplazamiento horizontal con errores — zoom 400 % (1280×1024 → 320×256 CSS px)
+OK    [reflow] Sin desplazamiento horizontal con menú abierto — zoom 400 % (1280×1024 → 320×256 CSS px)
+OK    [reflow] "Cerrar sesión" visible al recibir el foco con el menú abierto — zoom 400 % (1280×1024 → 320×256 CSS px) — top=198, bottom=242, alto de ventana=256
+OK    [reflow] Sin desplazamiento horizontal — 1280 px — scrollWidth=1280, clientWidth=1280
+OK    [reflow] Sin desplazamiento horizontal con errores — 1280 px
+OK    [foco] Orden de tabulación — escritorio 1280 px — a "Saltar al contenido principal" → a "UnCalificado" → a "Inicio" → a "Botones" → a "Mis solicitudes" → button "Cerrar sesión" → select "ClienteTrabajador independient" → button "Simular sesión iniciada" → button "Simular sesión cerrada" → input "correo" → input "contrasena" → button "Iniciar sesión" → button "Simular credenciales incorrect" → button "Primario" → button "Secundario" → button "Guardando…Guardar" → button "Probar estado de carga (2 s)"
+OK    [foco] Indicador de foco visible (outline ≥ 2 px, ≥ 3:1) en todos los elementos — escritorio 1280 px — menor contraste del indicador: 6.67:1 en a "UnCalificado"
+OK    [foco] Orden de tabulación — móvil 360 px — a "Saltar al contenido principal" → a "UnCalificado" → button "Menú" → select "ClienteTrabajador independient" → button "Simular sesión iniciada" → button "Simular sesión cerrada" → input "correo" → input "contrasena" → button "Iniciar sesión" → button "Simular credenciales incorrect" → button "Primario" → button "Secundario" → button "Guardando…Guardar" → button "Probar estado de carga (2 s)"
+OK    [foco] Indicador de foco visible (outline ≥ 2 px, ≥ 3:1) en todos los elementos — móvil 360 px — menor contraste del indicador: 6.67:1 en a "UnCalificado"
+OK    [menú] Enter abre el menú a 320 px — nombre cerrado="Menú", abierto="Menú"
+OK    [menú] Espacio cierra el menú a 320 px
+OK    [menú] Escape cierra y devuelve el foco al botón a 320 px
+OK    [menú] Enter abre el menú a 360 px — nombre cerrado="Menú", abierto="Menú"
+OK    [menú] Espacio cierra el menú a 360 px
+OK    [menú] Escape cierra y devuelve el foco al botón a 360 px
+OK    [foco] Contorno de foco completo (sin recorte) en los elementos del menú abierto — 360 px — Inicio, Botones, Mis solicitudes, Cerrar sesión
+OK    [foco] Contorno de foco completo (sin recorte) en los elementos del menú abierto — zoom 400 % — Inicio, Botones, Mis solicitudes, Cerrar sesión
+OK    [formulario] Enter con campos vacíos: foco en el correo, aria-invalid y mensaje asociado — !Error: Escribe tu correo electrónico.
+OK    [formulario] Carga: aria-busy y aria-disabled, sin disabled nativo — {"ariaDisabled":"true","ariaBusy":"true","disabled":false,"nombre":"Iniciando sesión (simulación)…"}
+OK    [formulario] Reintentos durante la carga no generan envíos nuevos — envíos=1
+OK    [formulario] Resultado anunciado en role=status — Simulación terminada: no se envió ninguna petición al servid
+OK    [formulario] Las 2 regiones role=status (simulación y formulario) están en el árbol de accesibilidad antes de actualizarse — regiones status expuestas=2
+OK    [extra] Espaciado de texto 1.4.12 a 360 px: sin desplazamiento horizontal
+OK    [consola] Sin errores en la consola del navegador
+
+Total: 43 comprobaciones, 0 fallas

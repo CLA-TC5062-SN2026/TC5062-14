@@ -1,0 +1,112 @@
+.boton {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--espacio-2);
+  min-height: 2.75rem; /* 44 px: área táctil cómoda en móvil */
+  padding: var(--espacio-2) var(--espacio-4);
+  border: 2px solid transparent;
+  border-radius: var(--radio);
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.boton:focus-visible {
+  outline: 3px solid var(--color-foco);
+  outline-offset: 2px;
+}
+
+.primary {
+  background-color: var(--color-primario);
+  color: #ffffff;
+}
+
+.primary:hover:not(:disabled) {
+  background-color: var(--color-primario-oscuro);
+}
+
+.secondary {
+  background-color: var(--color-fondo-superficie);
+  border-color: var(--color-primario);
+  color: var(--color-primario);
+}
+
+.secondary:hover:not(:disabled) {
+  background-color: var(--color-fondo);
+  border-color: var(--color-primario-oscuro);
+  color: var(--color-primario-oscuro);
+}
+
+.boton:disabled {
+  cursor: not-allowed;
+  background-color: var(--color-deshabilitado-fondo);
+  border-color: var(--color-deshabilitado-fondo);
+  color: var(--color-deshabilitado);
+}
+
+/*
+ * Durante la carga el botón usa aria-disabled (no :disabled), así que conserva el color de su
+ * variante y el foco; solo cambia el cursor y se anula el efecto hover.
+ */
+.cargando {
+  cursor: progress;
+}
+
+.cargando.primary:hover {
+  background-color: var(--color-primario);
+}
+
+.cargando.secondary:hover {
+  background-color: var(--color-fondo-superficie);
+  border-color: var(--color-primario);
+  color: var(--color-primario);
+}
+
+/* El texto se mantiene en su lugar (invisible) para que el botón no cambie de tamaño. */
+.cargando .contenido {
+  visibility: hidden;
+}
+
+.spinner {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 3px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: girar 0.8s linear infinite;
+}
+
+.ancho-completo {
+  width: 100%;
+}
+
+@keyframes girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Con movimiento reducido, el indicador gira lento en lugar de detenerse por completo. */
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2.5s !important;
+  }
+}
+
+/* Modo de alto contraste de Windows: conservar bordes visibles. */
+@media (forced-colors: active) {
+  .boton {
+    border-color: ButtonText;
+  }
+}

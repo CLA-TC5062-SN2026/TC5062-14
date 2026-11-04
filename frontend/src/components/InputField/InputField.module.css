@@ -1,0 +1,96 @@
+.campo {
+  display: grid;
+  gap: var(--espacio-1);
+  min-width: 0;
+}
+
+.etiqueta {
+  font-weight: 600;
+  color: var(--color-texto);
+}
+
+.obligatorio {
+  font-weight: 400;
+  font-size: 0.875rem;
+  color: var(--color-texto-secundario);
+}
+
+.ayuda {
+  font-size: 0.875rem;
+  color: var(--color-texto-secundario);
+}
+
+.control {
+  width: 100%;
+  min-height: 2.75rem; /* 44 px */
+  padding: var(--espacio-2) var(--espacio-3);
+  border: 1px solid var(--color-borde-control);
+  border-radius: var(--radio);
+  background-color: var(--color-fondo-superficie);
+  color: var(--color-texto);
+  /* 16 px como mínimo: evita el zoom automático de iOS al enfocar el campo. */
+  font: inherit;
+  font-size: max(1rem, 16px);
+}
+
+.control:hover:not(:disabled) {
+  border-color: var(--color-texto);
+}
+
+.control:focus-visible {
+  outline: 3px solid var(--color-foco);
+  outline-offset: 1px;
+  border-color: var(--color-foco);
+}
+
+/* Solo lectura (p. ej. mientras se envía el formulario): conserva el foco, pero se distingue visualmente. */
+.control:read-only:not(:disabled) {
+  background-color: var(--color-fondo);
+}
+
+.control:disabled {
+  cursor: not-allowed;
+  background-color: var(--color-deshabilitado-fondo);
+  color: var(--color-deshabilitado);
+}
+
+/* El error se marca con borde más grueso además del color, y con el mensaje de texto. */
+.control-con-error {
+  border: 2px solid var(--color-error);
+}
+
+.control-con-error:focus-visible {
+  outline-color: var(--color-error);
+  border-color: var(--color-error);
+}
+
+.error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--espacio-2);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-error);
+}
+
+.error-icono {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.125rem;
+  border-radius: 50%;
+  background-color: var(--color-error);
+  color: #ffffff;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+@media (forced-colors: active) {
+  .control-con-error {
+    border-style: double;
+    border-width: 4px;
+  }
+}

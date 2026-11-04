@@ -1,0 +1,44 @@
+Variables leídas de index.css: color-primario=#0b5cad, color-primario-oscuro=#08457f, color-texto=#1f2933, color-texto-secundario=#4b5563, color-exito=#166534, color-exito-fondo=#e8f5ec, color-error=#b42318, color-error-fondo=#fdecea, color-aviso=#7a4b00, color-aviso-fondo=#fff4d6, color-deshabilitado=#4b5563, color-deshabilitado-fondo=#e5e7eb, color-borde-control=#6b7280, color-borde=#d5dbe3, color-fondo=#f4f6f9, color-fondo-superficie=#ffffff, color-foco=#0b5cad, color-hero=#0b5cad, color-hero-fin=#08457f, color-texto-sobre-oscuro=#ffffff, color-texto-sobre-oscuro-suave=#e8f1fb, color-foco-sobre-oscuro=#ffffff, color-info-fondo=#e8f1fb, color-fondo-tecnico=#eef2f6, blanco=#ffffff
+
+| Primer plano | Fondo | Relación | Mínimo | Resultado | Uso |
+|---|---|---|---|---|---|
+| `color-texto` #1f2933 | `blanco` #ffffff | 14.76:1 | 4.5:1 | Cumple | Texto principal en tarjetas, campos y Navbar |
+| `color-texto` #1f2933 | `color-fondo` #f4f6f9 | 13.63:1 | 4.5:1 | Cumple | Texto del campo en solo lectura; texto sobre el fondo de la página |
+| `color-texto-secundario` #4b5563 | `blanco` #ffffff | 7.56:1 | 4.5:1 | Cumple | «(obligatorio)», ayuda, rol en Navbar, pie de Card, estado «Borrador» |
+| `color-texto-secundario` #4b5563 | `color-fondo` #f4f6f9 | 6.98:1 | 4.5:1 | Cumple | Textos secundarios sobre el fondo de la página |
+| `color-primario` #0b5cad | `blanco` #ffffff | 6.67:1 | 4.5:1 | Cumple | Marca, texto del botón secundario, enlace actual de Navbar, estados en curso |
+| `blanco` #ffffff | `color-primario` #0b5cad | 6.67:1 | 4.5:1 | Cumple | Texto del botón primario, «Iniciar sesión» de Navbar, enlace de salto |
+| `blanco` #ffffff | `color-primario-oscuro` #08457f | 9.69:1 | 4.5:1 | Cumple | Texto del botón primario en hover |
+| `color-primario-oscuro` #08457f | `blanco` #ffffff | 9.69:1 | 4.5:1 | Cumple | Botón secundario y enlaces en hover |
+| `color-primario-oscuro` #08457f | `color-fondo` #f4f6f9 | 8.95:1 | 4.5:1 | Cumple | Botón secundario y enlaces de Navbar en hover (fondo gris) |
+| `color-error` #b42318 | `blanco` #ffffff | 6.57:1 | 4.5:1 | Cumple | Mensaje de error debajo del campo |
+| `color-error` #b42318 | `color-error-fondo` #fdecea | 5.75:1 | 4.5:1 | Cumple | Alerta de credenciales incorrectas (simulación 401) |
+| `blanco` #ffffff | `color-error` #b42318 | 6.57:1 | 4.5:1 | Cumple | Ícono «!» del error (texto en negrita de 13 px) |
+| `color-aviso` #7a4b00 | `color-aviso-fondo` #fff4d6 | 6.76:1 | 4.5:1 | Cumple | Aviso de datos ficticios y etiqueta «Dato ficticio» |
+| `color-exito` #166534 | `blanco` #ffffff | 7.13:1 | 4.5:1 | Cumple | Estados «Terminado» y «Concluido» |
+| `color-deshabilitado` #4b5563 | `color-deshabilitado-fondo` #e5e7eb | 6.10:1 | — | No aplica | Texto de controles deshabilitados (exentos en 1.4.3; se verifica igual) |
+| `color-borde-control` #6b7280 | `blanco` #ffffff | 4.83:1 | 3:1 | Cumple | Borde de InputField, select y botón «Menú» sobre tarjeta o encabezado blanco |
+| `color-borde-control` #6b7280 | `color-fondo` #f4f6f9 | 4.47:1 | 3:1 | Cumple | Borde de InputField frente a su interior en solo lectura |
+| `color-error` #b42318 | `blanco` #ffffff | 6.57:1 | 3:1 | Cumple | Borde de 2 px de InputField con error |
+| `color-primario` #0b5cad | `blanco` #ffffff | 6.67:1 | 3:1 | Cumple | Borde del botón secundario; fondo del primario frente a la tarjeta; spinner del secundario |
+| `color-primario` #0b5cad | `color-fondo` #f4f6f9 | 6.16:1 | 3:1 | Cumple | Fondo del botón primario frente al fondo de la página |
+| `blanco` #ffffff | `color-primario` #0b5cad | 6.67:1 | 3:1 | Cumple | Spinner del botón primario (blanco sobre azul) |
+| `color-foco` #0b5cad | `blanco` #ffffff | 6.67:1 | 3:1 | Cumple | Indicador de foco (outline de 3 px) sobre tarjetas y encabezado |
+| `color-foco` #0b5cad | `color-fondo` #f4f6f9 | 6.16:1 | 3:1 | Cumple | Indicador de foco sobre el fondo de la página (p. ej. enlace de salto) |
+| `color-error` #b42318 | `blanco` #ffffff | 6.57:1 | 3:1 | Cumple | Indicador de foco de InputField con error |
+| `color-texto` #1f2933 | `blanco` #ffffff | 14.76:1 | 3:1 | Cumple | Icono de tres líneas del botón «Menú» |
+| `color-texto-sobre-oscuro` #ffffff | `color-hero` #0b5cad | 6.67:1 | 4.5:1 | Cumple | Título y puntos del hero (punto más claro del degradado) |
+| `color-texto-sobre-oscuro` #ffffff | `color-hero-fin` #08457f | 9.69:1 | 4.5:1 | Cumple | Título y puntos del hero (punto más oscuro del degradado) |
+| `color-texto-sobre-oscuro-suave` #e8f1fb | `color-hero` #0b5cad | 5.85:1 | 4.5:1 | Cumple | Párrafo descriptivo del hero |
+| `color-primario-oscuro` #08457f | `blanco` #ffffff | 9.69:1 | 4.5:1 | Cumple | Texto del enlace principal del hero (fondo blanco) |
+| `color-primario-oscuro` #08457f | `color-info-fondo` #e8f1fb | 8.49:1 | 4.5:1 | Cumple | Enlace principal del hero en hover; aviso de vista previa; etiquetas de oficios y municipios |
+| `color-texto-sobre-oscuro` #ffffff | `color-hero-fin` #08457f | 9.69:1 | 4.5:1 | Cumple | Enlace secundario del hero en hover |
+| `color-texto-secundario` #4b5563 | `color-fondo-tecnico` #eef2f6 | 6.72:1 | 4.5:1 | Cumple | Textos de la sección técnica de demostración |
+| `color-foco-sobre-oscuro` #ffffff | `color-hero` #0b5cad | 6.67:1 | 3:1 | Cumple | Indicador de foco de los enlaces del hero |
+| `color-texto-sobre-oscuro` #ffffff | `color-hero` #0b5cad | 6.67:1 | 3:1 | Cumple | Borde de 2 px de los enlaces del hero y de la etiqueta del piloto |
+| `color-primario` #0b5cad | `color-info-fondo` #e8f1fb | 5.85:1 | — | No aplica | Borde de las etiquetas de oficios y municipios (no son controles) |
+| `color-borde-control` #6b7280 | `color-fondo-tecnico` #eef2f6 | 4.30:1 | — | No aplica | Borde discontinuo que separa la sección técnica (decorativo) |
+| `color-foco` #0b5cad | `color-fondo-tecnico` #eef2f6 | 5.93:1 | 3:1 | Cumple | Indicador de foco sobre el fondo de la sección técnica |
+| `color-borde` #d5dbe3 | `blanco` #ffffff | 1.39:1 | — | No aplica | Borde de Card y separadores (decorativos: no identifican un control) |
+
+Pares evaluados: 38; pares que no cumplen: 0

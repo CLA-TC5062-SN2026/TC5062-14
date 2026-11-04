@@ -1,0 +1,49 @@
+.tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-3);
+  min-width: 0;
+  padding: var(--espacio-4);
+  background-color: var(--color-fondo-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+}
+
+.titulo {
+  font-size: 1.125rem;
+  line-height: 1.3;
+  color: var(--color-texto);
+  overflow-wrap: anywhere;
+}
+
+.cuerpo {
+  display: grid;
+  gap: var(--espacio-3);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.pie {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espacio-2);
+  margin-top: auto;
+  padding-top: var(--espacio-3);
+  border-top: 1px solid var(--color-borde);
+  font-size: 0.875rem;
+  color: var(--color-texto-secundario);
+}
+
+@media (min-width: 48rem) {
+  .tarjeta {
+    padding: var(--espacio-6);
+  }
+}
+
+@media (forced-colors: active) {
+  .tarjeta {
+    border-color: CanvasText;
+  }
+}

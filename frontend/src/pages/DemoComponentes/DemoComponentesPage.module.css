@@ -1,0 +1,505 @@
+/*
+ * Pantalla principal de la vista previa de UnCalificado.
+ * Mobile-first; ajustes a partir de 48rem (768 px) y 64rem (1024 px).
+ * Las clases .seccion, .texto-secundario, .formulario, .alerta-error, .acciones,
+ * .estado-formulario y .con-contenido también las usa FormularioLoginDemo.
+ */
+
+.pagina {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.contenedor {
+  display: block;
+  width: 100%;
+  max-width: var(--ancho-contenido);
+  margin-inline: auto;
+  padding-inline: var(--espacio-4);
+}
+
+/* Enlace para saltar la navegación: oculto hasta que recibe el foco. */
+.saltar-contenido {
+  position: absolute;
+  top: var(--espacio-2);
+  left: var(--espacio-2);
+  z-index: 20;
+  padding: var(--espacio-2) var(--espacio-4);
+  border-radius: var(--radio);
+  background-color: var(--color-primario);
+  color: #ffffff;
+  font-weight: 600;
+  transform: translateY(-200%);
+}
+
+.saltar-contenido:focus {
+  transform: none;
+  color: #ffffff;
+}
+
+.contenido {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.contenido:focus {
+  outline: none;
+}
+
+/* Los destinos de los enlaces internos no quedan ocultos bajo la barra fija. */
+.contenido [id] {
+  scroll-margin-top: 5.5rem;
+}
+
+/* ---------- Aviso de vista previa (discreto, siempre visible) ---------- */
+
+.aviso-vista-previa {
+  padding-block: var(--espacio-2);
+  border-bottom: 1px solid var(--color-borde);
+  background-color: var(--color-info-fondo);
+  color: var(--color-primario-oscuro);
+  font-size: 0.875rem;
+}
+
+/* ---------- Encabezado principal ---------- */
+
+.hero {
+  /* background-color como respaldo y referencia de contraste (el punto más claro del degradado). */
+  background-color: var(--color-hero);
+  background-image: linear-gradient(135deg, var(--color-hero) 0%, var(--color-hero-fin) 100%);
+  color: var(--color-texto-sobre-oscuro);
+}
+
+.hero-rejilla {
+  display: grid;
+  gap: var(--espacio-8);
+  padding-block: var(--espacio-8);
+}
+
+.hero-mensaje {
+  display: grid;
+  gap: var(--espacio-4);
+  align-content: start;
+  min-width: 0;
+}
+
+.hero-etiqueta {
+  justify-self: start;
+  padding: var(--espacio-1) var(--espacio-3);
+  border: 1px solid var(--color-texto-sobre-oscuro);
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.titulo {
+  font-size: 1.75rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.hero-descripcion {
+  max-width: 40rem;
+  font-size: 1.0625rem;
+  color: var(--color-texto-sobre-oscuro-suave);
+}
+
+.hero-puntos {
+  display: grid;
+  gap: var(--espacio-2);
+  padding-left: var(--espacio-6);
+  color: var(--color-texto-sobre-oscuro);
+}
+
+.hero-enlaces {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-3);
+  margin-top: var(--espacio-2);
+}
+
+.enlace-principal,
+.enlace-secundario {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: var(--espacio-2) var(--espacio-4);
+  border: 2px solid var(--color-texto-sobre-oscuro);
+  border-radius: var(--radio);
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+}
+
+.enlace-principal {
+  background-color: var(--color-fondo-superficie);
+  color: var(--color-primario-oscuro);
+}
+
+.enlace-principal:hover {
+  background-color: var(--color-info-fondo);
+  color: var(--color-primario-oscuro);
+}
+
+.enlace-secundario {
+  background-color: transparent;
+  color: var(--color-texto-sobre-oscuro);
+}
+
+.enlace-secundario:hover {
+  background-color: var(--color-hero-fin);
+  color: var(--color-texto-sobre-oscuro);
+}
+
+/*
+ * Sobre el fondo azul, el indicador de foco azul global sería invisible (WCAG 2.4.7, 1.4.11):
+ * en la columna del mensaje se usa blanco. La tarjeta de inicio de sesión es blanca y conserva
+ * el foco azul global.
+ */
+.hero-mensaje :focus-visible {
+  outline-color: var(--color-foco-sobre-oscuro);
+}
+
+.hero-login {
+  min-width: 0;
+  color: var(--color-texto);
+}
+
+.hero-login > section {
+  border: 0;
+  box-shadow: 0 10px 30px rgb(8 69 127 / 0.35);
+}
+
+/* ---------- Secciones de producto ---------- */
+
+.seccion-producto,
+.seccion-alterna {
+  padding-block: var(--espacio-8);
+  min-width: 0;
+}
+
+/* Tarjeta del formulario (la usa FormularioLoginDemo como className de Card). */
+.seccion {
+  min-width: 0;
+}
+
+.seccion-alterna {
+  background-color: var(--color-fondo-superficie);
+  border-block: 1px solid var(--color-borde);
+}
+
+.encabezado-seccion {
+  display: grid;
+  gap: var(--espacio-2);
+  max-width: 48rem;
+  margin-bottom: var(--espacio-6);
+}
+
+.subtitulo {
+  font-size: 1.5rem;
+  line-height: 1.25;
+}
+
+.texto-secundario {
+  color: var(--color-texto-secundario);
+}
+
+.nota {
+  font-size: 0.875rem;
+  color: var(--color-texto-secundario);
+}
+
+/* Pasos de «Cómo funcionará» */
+.pasos {
+  display: grid;
+  gap: var(--espacio-4);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.paso {
+  display: flex;
+  min-width: 0;
+}
+
+.tarjeta-paso {
+  flex: 1;
+}
+
+.numero-paso {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  margin-right: var(--espacio-2);
+  border-radius: 50%;
+  background-color: var(--color-primario);
+  color: #ffffff;
+  font-size: 1rem;
+  vertical-align: middle;
+}
+
+/* Catálogo del piloto */
+.catalogo {
+  display: grid;
+  gap: var(--espacio-4);
+}
+
+.etiquetas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-2);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.etiqueta {
+  padding: var(--espacio-1) var(--espacio-3);
+  border: 1px solid var(--color-primario);
+  border-radius: 999px;
+  background-color: var(--color-info-fondo);
+  color: var(--color-primario-oscuro);
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+/* Solicitudes de ejemplo */
+.rejilla {
+  display: grid;
+  gap: var(--espacio-4);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.rejilla > li {
+  display: flex;
+  min-width: 0;
+}
+
+.tarjeta-solicitud {
+  flex: 1;
+}
+
+.datos-solicitud {
+  display: grid;
+  gap: var(--espacio-2);
+}
+
+.datos-solicitud > div {
+  display: grid;
+  gap: 0.125rem;
+}
+
+.datos-solicitud dt {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-texto-secundario);
+}
+
+/* El estado se comunica con texto; el color es solo un apoyo. */
+.estado {
+  display: inline-block;
+  padding: 0.125rem var(--espacio-2);
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-texto);
+}
+
+.estado[data-estado='borrador'] {
+  color: var(--color-texto-secundario);
+}
+
+.estado[data-estado='confirmada'],
+.estado[data-estado='programado'],
+.estado[data-estado='en_proceso'] {
+  color: var(--color-primario);
+}
+
+.estado[data-estado='terminado'],
+.estado[data-estado='concluido'] {
+  color: var(--color-exito);
+}
+
+.etiqueta-ejemplo {
+  display: inline-block;
+  padding: 0.125rem var(--espacio-2);
+  border-radius: 999px;
+  background-color: var(--color-aviso-fondo);
+  color: var(--color-aviso);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+  vertical-align: middle;
+}
+
+/* ---------- Formulario (FormularioLoginDemo) ---------- */
+
+.formulario {
+  display: grid;
+  gap: var(--espacio-4);
+}
+
+.acciones {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-3);
+}
+
+.alerta-error {
+  padding: var(--espacio-3) var(--espacio-4);
+  border: 1px solid var(--color-error);
+  border-left-width: 6px;
+  border-radius: var(--radio);
+  background-color: var(--color-error-fondo);
+  color: var(--color-error);
+}
+
+/*
+ * Las regiones role=status permanecen siempre en el DOM y en el árbol de accesibilidad
+ * (hallazgo A3-2 de accesibilidad.md). Solo reciben el recuadro cuando tienen contenido.
+ */
+.estado-formulario.con-contenido,
+.estado-demostracion.con-contenido,
+.estado-simulacion {
+  padding: var(--espacio-3) var(--espacio-4);
+  border-radius: var(--radio);
+  background-color: var(--color-fondo);
+}
+
+/* ---------- Sección técnica de demostración ---------- */
+
+.seccion-tecnica {
+  padding-block: var(--espacio-8);
+  border-top: 2px dashed var(--color-borde-control);
+  background-color: var(--color-fondo-tecnico);
+}
+
+.etiqueta-tecnica {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-texto-secundario);
+}
+
+.rejilla-tecnica {
+  display: grid;
+  gap: var(--espacio-4);
+}
+
+.control-simulacion {
+  display: grid;
+  gap: var(--espacio-1);
+}
+
+.etiqueta-select {
+  font-weight: 600;
+}
+
+.select {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: var(--espacio-2) var(--espacio-3);
+  border: 1px solid var(--color-borde-control);
+  border-radius: var(--radio);
+  background-color: var(--color-fondo-superficie);
+  color: var(--color-texto);
+  font: inherit;
+  font-size: max(1rem, 16px);
+}
+
+.muestrario {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-3);
+}
+
+/* ---------- Pie ---------- */
+
+.pie {
+  padding-block: var(--espacio-6);
+  border-top: 1px solid var(--color-borde);
+  background-color: var(--color-fondo-superficie);
+  font-size: 0.875rem;
+  color: var(--color-texto-secundario);
+}
+
+/* ---------- Pantallas medianas ---------- */
+
+@media (min-width: 48rem) {
+  .contenedor {
+    padding-inline: var(--espacio-8);
+  }
+
+  .hero-rejilla,
+  .seccion-producto,
+  .seccion-alterna,
+  .seccion-tecnica {
+    padding-block: 3.5rem;
+  }
+
+  .titulo {
+    font-size: 2.25rem;
+  }
+
+  .subtitulo {
+    font-size: 1.75rem;
+  }
+
+  .hero-enlaces,
+  .acciones {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  /* En pantallas medianas los botones del formulario recuperan su ancho natural. */
+  .acciones > button {
+    width: auto;
+  }
+
+  .pasos,
+  .rejilla,
+  .catalogo {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---------- Escritorio ---------- */
+
+@media (min-width: 64rem) {
+  .hero-rejilla {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    align-items: start;
+    gap: var(--espacio-8);
+  }
+
+  .titulo {
+    font-size: 2.5rem;
+  }
+
+  .pasos {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .rejilla-tecnica {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+@media (forced-colors: active) {
+  .hero-etiqueta,
+  .etiqueta,
+  .enlace-principal,
+  .enlace-secundario {
+    border-color: CanvasText;
+  }
+}

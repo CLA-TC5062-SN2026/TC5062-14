@@ -1,0 +1,49 @@
+
+ RUN  v5.1.0 <repositorio>/frontend
+
+ ✓ src/components/Card/Card.test.tsx > Card > por defecto es un <article> con encabezado h3 que le da nombre accesible 68ms
+ ✓ src/components/Card/Card.test.tsx > Card > como <section> con h2 forma una región con nombre (formularios) 7ms
+ ✓ src/components/Card/Card.test.tsx > Card > como <div> no intenta asignar nombre accesible (un div sin rol no lo admite) 2ms
+ ✓ src/components/Card/Card.test.tsx > Card > sin título no crea encabezado ni aria-labelledby 4ms
+ ✓ src/components/Card/Card.test.tsx > Card > renderiza el pie y conserva className y atributos adicionales 8ms
+ ✓ src/components/Card/Card.test.tsx > Card > no tiene violaciones axe detectables en sus variantes 34ms
+ ✓ src/components/Button/Button.test.tsx > Button > se renderiza como <button> con nombre accesible y type="button" por defecto 64ms
+ ✓ src/components/InputField/InputField.test.tsx > InputField > asocia la etiqueta visible con el campo (htmlFor/id) y usa el name del backend 24ms
+ ✓ src/components/InputField/InputField.test.tsx > InputField > genera ids únicos cuando hay varias instancias sin id explícito 4ms
+ ✓ src/components/InputField/InputField.test.tsx > InputField > marca el campo obligatorio con texto visible y el atributo required 43ms
+ ✓ src/components/InputField/InputField.test.tsx > InputField > sin error: no expone aria-invalid y describe el campo con la ayuda 5ms
+ ✓ src/components/InputField/InputField.test.tsx > InputField > con error: aria-invalid="true", mensaje visible y asociado con aria-describedby (3.3.1) 6ms
+ ✓ src/components/InputField/InputField.test.tsx > InputField > conserva una aria-describedby externa además de la ayuda y el error 2ms
+ ✓ src/components/Navbar/Navbar.test.tsx > Navbar > expone header y nav con nombre, y marca el enlace actual con aria-current 78ms
+ ✓ src/components/Navbar/Navbar.test.tsx > Navbar > sin sesión > muestra la navegación pública y el acceso a "Iniciar sesión" 12ms
+ ✓ src/components/Navbar/Navbar.test.tsx > Navbar > con sesión > rol cliente: muestra nombre, rol (Cliente) y "Cerrar sesión" 8ms
+ ✓ src/pages/DemoComponentes/FormularioLoginDemo.test.tsx > FormularioLoginDemo (integración de InputField, Button y Card) > al enviar vacío muestra los errores junto a cada campo y enfoca el primero (3.3.1, RNF-01-AC-2) 99ms
+ ✓ src/components/Button/Button.test.tsx > Button > respeta type="submit" y ejecuta onClick con teclado (Enter y Espacio) 119ms
+ ✓ src/components/InputField/InputField.test.tsx > InputField > permite escribir con teclado y respeta readOnly sin perder el foco 26ms
+ ✓ src/components/Navbar/Navbar.test.tsx > Navbar > con sesión > rol trabajador: muestra nombre, rol (Trabajador independiente) y "Cerrar sesión" 6ms
+ ✓ src/components/Navbar/Navbar.test.tsx > Navbar > con sesión > rol organizacion: muestra nombre, rol (Organización de contratistas) y "Cerrar sesión" 5ms
+ ✓ src/components/Navbar/Navbar.test.tsx > Navbar > con sesión > rol administrador: muestra nombre, rol (Administrador) y "Cerrar sesión" 6ms
+ ✓ src/components/Navbar/Navbar.test.tsx > Navbar > con sesión > "Cerrar sesión" llama a onLogout y no toca la API 44ms
+ ✓ src/pages/DemoComponentes/FormularioLoginDemo.test.tsx > FormularioLoginDemo (integración de InputField, Button y Card) > corregir un campo retira solo su error 63ms
+ ✓ src/components/Button/Button.test.tsx > Button > con disabled usa el atributo nativo y no ejecuta onClick 63ms
+ ✓ src/components/Button/Button.test.tsx > Button > estado de carga (isLoading) > expone aria-busy, aria-disabled y el texto de carga como nombre, sin disabled nativo 6ms
+ ✓ src/components/Navbar/Navbar.test.tsx > Navbar > con sesión > tras cerrar sesión con teclado, el foco pasa a "Iniciar sesión" (2.4.3) 51ms
+ ✓ src/components/Navbar/Navbar.test.tsx > Navbar > menú compacto > el botón tiene nombre estable, aria-controls y aria-expanded=false al inicio 3ms
+ ✓ src/components/Navbar/Navbar.test.tsx > Navbar > menú compacto > se abre y se cierra con Enter y Espacio; el nombre no cambia (4.1.2) 71ms
+ ✓ src/pages/DemoComponentes/FormularioLoginDemo.test.tsx > FormularioLoginDemo (integración de InputField, Button y Card) > durante la carga conserva el foco, bloquea reenvíos y anuncia el resultado en role=status 165ms
+ ✓ src/pages/DemoComponentes/FormularioLoginDemo.test.tsx > FormularioLoginDemo (integración de InputField, Button y Card) > la simulación 401 muestra el mensaje real del backend en role=alert 38ms
+ ✓ src/components/Button/Button.test.tsx > Button > estado de carga (isLoading) > conserva el foco y bloquea clic, Enter y Espacio 165ms
+ ✓ src/components/InputField/InputField.test.tsx > InputField > actualiza el valor al escribir (componente controlado) 360ms
+ ✓ src/components/InputField/InputField.test.tsx > InputField > no tiene violaciones axe detectables (con y sin error) 36ms
+ ✓ src/pages/DemoComponentes/FormularioLoginDemo.test.tsx > FormularioLoginDemo (integración de InputField, Button y Card) > no tiene violaciones axe detectables en estado inicial ni con errores 144ms
+ ✓ src/components/Navbar/Navbar.test.tsx > Navbar > menú compacto > Escape cierra el menú y devuelve el foco al botón 139ms
+ ✓ src/components/Button/Button.test.tsx > Button > estado de carga (isLoading) > impide el envío del formulario, incluido el envío implícito con Enter desde un campo 221ms
+ ✓ src/components/Button/Button.test.tsx > Button > estado de carga (isLoading) > el spinner es decorativo (aria-hidden) y el texto visible queda oculto para lectores 4ms
+ ✓ src/components/Button/Button.test.tsx > Button > no tiene violaciones axe detectables (variantes, deshabilitado y carga) 34ms
+ ✓ src/components/Navbar/Navbar.test.tsx > Navbar > menú compacto > elegir un enlace cierra el menú 112ms
+ ✓ src/components/Navbar/Navbar.test.tsx > Navbar > no tiene violaciones axe detectables (sin sesión, con sesión y menú abierto) 129ms
+
+ Test Files  5 passed (5)
+      Tests  41 passed (41)
+   Start at  17:29:34
+   Duration  2.86s (environment 59%, tests 20%, setup 15%, import 4%, transform 2%)

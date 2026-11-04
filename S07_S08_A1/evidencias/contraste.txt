@@ -1,0 +1,32 @@
+Variables leídas de index.css: color-primario=#0b5cad, color-primario-oscuro=#08457f, color-texto=#1f2933, color-texto-secundario=#4b5563, color-exito=#166534, color-exito-fondo=#e8f5ec, color-error=#b42318, color-error-fondo=#fdecea, color-aviso=#7a4b00, color-aviso-fondo=#fff4d6, color-deshabilitado=#4b5563, color-deshabilitado-fondo=#e5e7eb, color-borde-control=#6b7280, color-borde=#d5dbe3, color-fondo=#f4f6f9, color-fondo-superficie=#ffffff, color-foco=#0b5cad, blanco=#ffffff
+
+| Primer plano | Fondo | Relación | Mínimo | Resultado | Uso |
+|---|---|---|---|---|---|
+| `color-texto` #1f2933 | `blanco` #ffffff | 14.76:1 | 4.5:1 | Cumple | Texto principal en tarjetas, campos y Navbar |
+| `color-texto` #1f2933 | `color-fondo` #f4f6f9 | 13.63:1 | 4.5:1 | Cumple | Texto del campo en solo lectura; texto sobre el fondo de la página |
+| `color-texto-secundario` #4b5563 | `blanco` #ffffff | 7.56:1 | 4.5:1 | Cumple | «(obligatorio)», ayuda, rol en Navbar, pie de Card, estado «Borrador» |
+| `color-texto-secundario` #4b5563 | `color-fondo` #f4f6f9 | 6.98:1 | 4.5:1 | Cumple | Textos secundarios sobre el fondo de la página |
+| `color-primario` #0b5cad | `blanco` #ffffff | 6.67:1 | 4.5:1 | Cumple | Marca, texto del botón secundario, enlace actual de Navbar, estados en curso |
+| `blanco` #ffffff | `color-primario` #0b5cad | 6.67:1 | 4.5:1 | Cumple | Texto del botón primario, «Iniciar sesión» de Navbar, enlace de salto |
+| `blanco` #ffffff | `color-primario-oscuro` #08457f | 9.69:1 | 4.5:1 | Cumple | Texto del botón primario en hover |
+| `color-primario-oscuro` #08457f | `blanco` #ffffff | 9.69:1 | 4.5:1 | Cumple | Botón secundario y enlaces en hover |
+| `color-primario-oscuro` #08457f | `color-fondo` #f4f6f9 | 8.95:1 | 4.5:1 | Cumple | Botón secundario y enlaces de Navbar en hover (fondo gris) |
+| `color-error` #b42318 | `blanco` #ffffff | 6.57:1 | 4.5:1 | Cumple | Mensaje de error debajo del campo |
+| `color-error` #b42318 | `color-error-fondo` #fdecea | 5.75:1 | 4.5:1 | Cumple | Alerta de credenciales incorrectas (simulación 401) |
+| `blanco` #ffffff | `color-error` #b42318 | 6.57:1 | 4.5:1 | Cumple | Ícono «!» del error (texto en negrita de 13 px) |
+| `color-aviso` #7a4b00 | `color-aviso-fondo` #fff4d6 | 6.76:1 | 4.5:1 | Cumple | Aviso de datos ficticios y etiqueta «Dato ficticio» |
+| `color-exito` #166534 | `blanco` #ffffff | 7.13:1 | 4.5:1 | Cumple | Estados «Terminado» y «Concluido» |
+| `color-deshabilitado` #4b5563 | `color-deshabilitado-fondo` #e5e7eb | 6.10:1 | — | No aplica | Texto de controles deshabilitados (exentos en 1.4.3; se verifica igual) |
+| `color-borde-control` #6b7280 | `blanco` #ffffff | 4.83:1 | 3:1 | Cumple | Borde de InputField, select y botón «Menú» sobre tarjeta o encabezado blanco |
+| `color-borde-control` #6b7280 | `color-fondo` #f4f6f9 | 4.47:1 | 3:1 | Cumple | Borde de InputField frente a su interior en solo lectura |
+| `color-error` #b42318 | `blanco` #ffffff | 6.57:1 | 3:1 | Cumple | Borde de 2 px de InputField con error |
+| `color-primario` #0b5cad | `blanco` #ffffff | 6.67:1 | 3:1 | Cumple | Borde del botón secundario; fondo del primario frente a la tarjeta; spinner del secundario |
+| `color-primario` #0b5cad | `color-fondo` #f4f6f9 | 6.16:1 | 3:1 | Cumple | Fondo del botón primario frente al fondo de la página |
+| `blanco` #ffffff | `color-primario` #0b5cad | 6.67:1 | 3:1 | Cumple | Spinner del botón primario (blanco sobre azul) |
+| `color-foco` #0b5cad | `blanco` #ffffff | 6.67:1 | 3:1 | Cumple | Indicador de foco (outline de 3 px) sobre tarjetas y encabezado |
+| `color-foco` #0b5cad | `color-fondo` #f4f6f9 | 6.16:1 | 3:1 | Cumple | Indicador de foco sobre el fondo de la página (p. ej. enlace de salto) |
+| `color-error` #b42318 | `blanco` #ffffff | 6.57:1 | 3:1 | Cumple | Indicador de foco de InputField con error |
+| `color-texto` #1f2933 | `blanco` #ffffff | 14.76:1 | 3:1 | Cumple | Icono de tres líneas del botón «Menú» |
+| `color-borde` #d5dbe3 | `blanco` #ffffff | 1.39:1 | — | No aplica | Borde de Card y separadores (decorativos: no identifican un control) |
+
+Pares evaluados: 26; pares que no cumplen: 0
