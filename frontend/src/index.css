@@ -1,0 +1,125 @@
+/*
+ * Estilos globales mínimos: variables de diseño, reinicio básico y foco visible.
+ * Los estilos de cada página o componente viven en su propio *.module.css (CSS Modules).
+ */
+:root {
+  color-scheme: light;
+
+  /* Colores (contraste verificado contra --color-fondo-superficie #ffffff) */
+  --color-primario: #0b5cad;          /* 6.67:1 */
+  --color-primario-oscuro: #08457f;   /* 9.69:1 */
+  --color-texto: #1f2933;             /* 14.76:1 */
+  --color-texto-secundario: #4b5563;  /* 7.56:1; 6.98:1 sobre --color-fondo */
+  --color-exito: #166534;             /* 7.13:1; 6.35:1 sobre su fondo */
+  --color-exito-fondo: #e8f5ec;
+  --color-error: #b42318;             /* 6.57:1; 5.75:1 sobre su fondo */
+  --color-error-fondo: #fdecea;
+  --color-aviso: #7a4b00;             /* 7.41:1; 6.76:1 sobre su fondo */
+  --color-aviso-fondo: #fff4d6;
+  --color-deshabilitado: #4b5563;     /* 6.10:1 sobre su fondo (antes #6b7280: 3.90:1) */
+  --color-deshabilitado-fondo: #e5e7eb;
+  --color-borde-control: #6b7280;     /* 4.83:1, contraste no textual ≥ 3:1 (WCAG 1.4.11) */
+  --color-borde: #d5dbe3;
+  --color-fondo: #f4f6f9;
+  --color-fondo-superficie: #ffffff;
+  --color-foco: #0b5cad;
+
+  /* Rediseño orientado al producto (contraste medido en el peor punto del degradado, #0b5cad) */
+  --color-hero: #0b5cad;
+  --color-hero-fin: #08457f;
+  --color-texto-sobre-oscuro: #ffffff;        /* 6.67:1 sobre #0b5cad; 9.69:1 sobre #08457f */
+  --color-texto-sobre-oscuro-suave: #e8f1fb;  /* 5.85:1 sobre #0b5cad */
+  --color-foco-sobre-oscuro: #ffffff;         /* indicador de foco sobre el hero: 6.67:1 */
+  --color-info-fondo: #e8f1fb;                /* aviso de vista previa: --color-primario-oscuro 8.49:1 */
+  --color-fondo-tecnico: #eef2f6;             /* sección de demostración: texto secundario 6.72:1 */
+
+  /* Tipografía */
+  --fuente-base: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --fuente-mono: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', Consolas, monospace;
+
+  /* Espaciado y forma */
+  --espacio-1: 0.25rem;
+  --espacio-2: 0.5rem;
+  --espacio-3: 0.75rem;
+  --espacio-4: 1rem;
+  --espacio-6: 1.5rem;
+  --espacio-8: 2rem;
+  --radio: 0.5rem;
+  --ancho-contenido: 64rem;
+
+  font-family: var(--fuente-base);
+  font-size: 100%;
+  line-height: 1.5;
+  color: var(--color-texto);
+  background-color: var(--color-fondo);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: var(--color-fondo);
+}
+
+h1,
+h2,
+h3,
+p,
+ul,
+dl,
+dd {
+  margin: 0;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: var(--color-primario);
+}
+
+a:hover {
+  color: var(--color-primario-oscuro);
+}
+
+/*
+ * Texto disponible para lectores de pantalla pero oculto visualmente.
+ * Es la única clase global de utilidad; los componentes usan CSS Modules.
+ */
+.visualmente-oculto {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Indicador de foco visible para navegación con teclado (WCAG 2.4.7) */
+:focus-visible {
+  outline: 3px solid var(--color-foco);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

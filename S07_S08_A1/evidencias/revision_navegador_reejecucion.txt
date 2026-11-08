@@ -1,0 +1,39 @@
+# Revisión crítica: reejecución de revisar.mjs (34 comprobaciones) sobre el código ACTUAL
+# Fecha: 2026-11-03 18:19 · Microsoft Edge (headless) vía playwright-core 1.64.1
+# Incluye los cambios de la Parte 3 (accesibilidad.md); no reproduce el estado del código durante la revisión crítica.
+OK   Sin desplazamiento horizontal a 320px — scrollWidth=320 clientWidth=320
+OK   Botón "Menú" visible a 320px
+OK   Sin desplazamiento horizontal a 360px — scrollWidth=360 clientWidth=360
+OK   Botón "Menú" visible a 360px
+OK   Sin desplazamiento horizontal con menú abierto a 360px
+OK   Sin desplazamiento horizontal a 768px — scrollWidth=768 clientWidth=768
+OK   Botón "Menú" oculto a 768px
+OK   Sin desplazamiento horizontal a 1280px — scrollWidth=1280 clientWidth=1280
+OK   Botón "Menú" oculto a 1280px
+OK   Primer Tab: enlace "Saltar al contenido" visible — a "Saltar al contenido principal"
+OK   Enter en el enlace de salto mueve el foco a <main> — main#contenido "Demostración con datos ficticios. Esta p"
+OK   Tab llega al botón "Menú" — button "Menú"
+OK   Enter abre el menú (aria-expanded=true)
+OK   Tab entra al primer enlace del menú — a "Inicio"
+OK   Escape cierra el menú y devuelve el foco al botón — button "Menú", aria-expanded=false
+OK   Con sesión: nombre y rol visibles en el menú
+OK   Cerrar sesión (Enter) mueve el foco a "Iniciar sesión" — a "Iniciar sesión"
+OK   Elegir un enlace cierra el menú
+OK   Rol cliente: etiqueta y enlaces — UnCalificado | Inicio | Botones | Mis solicitudes
+OK   Rol trabajador: etiqueta y enlaces — UnCalificado | Inicio | Botones | Solicitudes asignadas
+OK   Rol organizacion: etiqueta y enlaces — UnCalificado | Inicio | Botones | Solicitudes asignadas
+OK   Rol administrador: etiqueta y enlaces — UnCalificado | Inicio | Botones
+OK   Envío vacío: foco en el correo con aria-invalid — input#campo-_r_3_ "correo"
+OK   aria-describedby del correo contiene el mensaje de error — !Error: Escribe tu correo electrónico.
+OK   La contraseña también muestra su error
+OK   Correo mal formado: mensaje específico
+OK   Durante la carga: aria-busy y aria-disabled, sin disabled nativo — {"disabled":false,"ariaDisabled":"true","texto":"Iniciando sesión (simulación)…Iniciar sesión"}
+OK   Durante la carga: el foco no se pierde (no queda en BODY) — input#campo-_r_4_ "contrasena"
+OK   Reintentos durante la carga no generan envíos nuevos — envíos=1
+OK   Al terminar: mensaje de simulación en role=status
+OK   Al terminar: foco en un control del formulario — button "Iniciar sesión"
+OK   Simulación 401: alerta con el mensaje real del backend
+OK   "Probar estado de carga": el foco se conserva durante la carga — button "Procesando…Probar estado de carga (2 s)"
+OK   Sin errores en la consola del navegador
+
+Total: 34 comprobaciones, 0 fallas
