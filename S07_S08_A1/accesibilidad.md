@@ -2,7 +2,7 @@
 
 > **Actividad:** S07-S08-A1, Parte 3.
 > **Documentos relacionados:** [`decision_stack_frontend.md`](decision_stack_frontend.md) (Parte 0), [`evidencias/notas_generacion_ia.md`](evidencias/notas_generacion_ia.md) (Parte 2) y [`revision_componentes.md`](revision_componentes.md) (revisión crítica).
-> **Estado:** evaluación técnica preparada con apoyo de un agente de IA (Claude Code), **pendiente de revisión por el equipo**. No es una auditoría de conformidad WCAG completa: ver la sección 7.
+> **Estado:** evaluación técnica preparada con apoyo de un agente de IA (Claude Code), **revisada y aprobada por el equipo** como parte de la propuesta de la actividad S07-S08-A1. No es una auditoría de conformidad WCAG completa: las pruebas manuales de la sección 7 siguen pendientes.
 
 ## 1. Objetivo y alcance
 
@@ -362,7 +362,7 @@ El botón «Deshabilitado» no aparece, como corresponde a un `disabled` nativo.
    - los formularios se completan con teclado: cumple;
    - el texto es legible sin zoom a 360 px: sin desplazamiento horizontal y con fuente mínima de 16 px en los campos.
 4. **Relación con RNF-01-AC-2 y RNF-02:** cumplen en las pruebas automatizadas.
-5. **Antes de considerar la evaluación concluida**, el equipo debe hacer las pruebas manuales de la sección 7, en especial con un lector de pantalla, y validar las decisiones de diseño: `aria-disabled` en Button y el menú desplazable en Navbar.
+5. **Antes de considerar la evaluación concluida**, el equipo debe hacer las pruebas manuales de la sección 7, en especial con un lector de pantalla. La validación de las decisiones de diseño (`aria-disabled` en Button y el menú desplazable en Navbar) quedó ~~pendiente~~ **atendida** con la aprobación de la propuesta por el equipo.
 
 ## 9. Addendum: re-verificación tras el rediseño orientado al producto
 

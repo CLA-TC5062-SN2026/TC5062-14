@@ -1,7 +1,7 @@
 # S07-S08-A1 · Parte 0 — Decisión del stack frontend
 
-> **Estado del documento: propuesta técnica pendiente de revisión y aprobación por el equipo.**
-> Las decisiones que siguen son una propuesta inicial para la actividad S07-S08-A1. No representan todavía un acuerdo del equipo. Cuando el equipo las revise, este documento se actualizará con el resultado: aprobada, ajustada o rechazada.
+> **Estado del documento: aprobado por el equipo.**
+> El equipo de UnCalificado revisó la propuesta técnica de la actividad S07-S08-A1 y aprobó el stack frontend: **React + Vite + TypeScript**, **CSS Modules**, **Context API** y **Fetch API**. Se conservan las alternativas consideradas y la justificación técnica que sustentaron la decisión.
 
 ## 1. Contexto
 
@@ -9,7 +9,7 @@ UnCalificado ya tiene definidos el SRS (`S03_A1/SRS_equipo.md`), la arquitectura
 
 La arquitectura del equipo establece que el frontend es una **SPA servida como contenido estático** por el proxy inverso Nginx (decisión **AR-05**). No fija la tecnología con la que se construye. El único antecedente en el repositorio es la propuesta individual de Norman (`S05_S06_A1/01_insumos/norman/decision_arquitectonica.md`, sección «Decisión»), que plantea React + Vite + TypeScript como decisión de implementación. Esa propuesta cita un documento `S01_A2/stack_decision.md` que no forma parte de este repositorio. Por eso esta decisión se documenta aquí de forma completa, sin depender de ese archivo.
 
-## 2. Stack propuesto
+## 2. Stack aprobado
 
 | Aspecto | Elección | Resumen del motivo |
 |---|---|---|
@@ -130,7 +130,7 @@ Axios ofrece interceptores y conversión automática de JSON. Fetch es nativa de
 3. **Segundo factor del administrador (RNF-11-AC-2).** El backend responde `segundoFactorRequerido: false` y no implementa `/auth/segundo-factor`. El frontend no implementará ese flujo en esta actividad.
 4. **Registro.** `POST /api/auth/register` exige `versionAviso`, pero `GET /avisos-privacidad/vigente` no está implementado. Una pantalla de registro funcional queda pendiente de ese endpoint.
 5. **Diferencias entre la implementación y el contrato** (`/api` frente a `/api/v1`; `/auth/me` frente a `/usuarios/yo`). Se mitigan centralizando las rutas en el cliente HTTP (sección 3.4).
-6. **Validación por el equipo.** Este documento debe revisarse en la próxima reunión del equipo. Interesa especialmente confirmar la elección de React frente a Vue y la estrategia de almacenamiento del token.
+6. **Validación por el equipo.** ~~Pendiente~~ **Atendido:** el equipo aprobó el stack de la sección 2 (React + Vite + TypeScript, CSS Modules, Context API y Fetch API), lo que confirma la elección de React frente a Vue. Los riesgos 1 a 5 de esta sección siguen vigentes como deuda técnica o dependencias del backend.
 
 ## 6. Referencias en el repositorio
 

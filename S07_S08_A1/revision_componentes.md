@@ -3,7 +3,7 @@
 > **Actividad:** S07-S08-A1, revisión de la Parte 2 (componentes esenciales de UI).
 > **Insumos:** [`evidencias/notas_generacion_ia.md`](evidencias/notas_generacion_ia.md) (registro del agente durante la generación) y el código de `frontend/src/`.
 > **Seguimiento:** el Navbar volvió a modificarse durante la Parte 3 (hallazgos A3-1, A3-3 y A3-4: menú desplazable con zoom de 400 %, nombre estable del botón «Menú» y contorno de foco sin recorte). Esos cambios están documentados en [`accesibilidad.md`](accesibilidad.md), sección 5.1. Esta revisión describe el estado previo a la Parte 3. Después, el rediseño de la pantalla orientado al producto movió el paso a barra horizontal del Navbar de 768 a 1024 px (R-1) y reorganizó `DemoComponentesPage`; ver [`accesibilidad.md`](accesibilidad.md), sección 9.
-> **Estado:** revisión técnica preparada con apoyo del agente de IA y **pendiente de validación por el equipo**. Esta revisión no es la auditoría formal WCAG 2.1 de la Parte 3.
+> **Estado:** revisión técnica preparada con apoyo del agente de IA, **revisada y aprobada por el equipo** como parte de la propuesta de la actividad S07-S08-A1. Esta revisión no es la auditoría formal WCAG 2.1 de la Parte 3. Las comprobaciones manuales de la sección 8 siguen pendientes.
 
 ## 1. Cómo se hizo la revisión
 
@@ -242,4 +242,4 @@ Navbar es un componente de presentación con `header` > `nav[aria-label="Princip
 5. **Contraseña:** no hay opción para mostrar u ocultar la contraseña.
 6. **`InicioPage.tsx`:** pantalla de la Parte 1 que ya no se muestra; falta decidir si se conserva.
 7. **Pruebas automatizadas en el repositorio:** ~~pendiente~~ **atendido en la Parte 3.** Se incorporaron Vitest, React Testing Library, jest-dom, user-event, jest-axe y jsdom como dependencias de desarrollo de `frontend/` (`npm run test`: 41 pruebas). Ver [`accesibilidad.md`](accesibilidad.md), sección 6.1. Las pruebas en navegador (Edge vía `playwright-core`) siguen fuera de las dependencias del proyecto: los scripts se conservan en `evidencias/` para reproducirlos, e incorporarlas como pruebas E2E queda como trabajo futuro.
-8. **Validación del equipo:** el cambio de `disabled` a `aria-disabled` en `Button` modifica el comportamiento del foco durante la carga y debe confirmarse en la revisión del equipo.
+8. **Validación del equipo:** ~~pendiente~~ **atendido.** El cambio de `disabled` a `aria-disabled` en `Button`, que modifica el comportamiento del foco durante la carga, forma parte de la propuesta aprobada por el equipo.
