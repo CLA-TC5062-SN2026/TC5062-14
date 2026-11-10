@@ -1,0 +1,4144 @@
+openapi: 3.0.3
+info:
+  title: UnCalificado — API del backend (MVP)
+  version: 0.2.0
+  description: |
+    API REST del backend de **UnCalificado**, plataforma que conecta a clientes que necesitan
+    un trabajo de oficio con trabajadores independientes y organizaciones de contratistas,
+    con un agente de IA que guía la solicitud.
+
+    **Fuente funcional:** `S03_A1/SRS_equipo.md` (v1.0, 3-oct-2026), RF-01 a RF-55 y RNF-01 a RNF-14.
+
+    **Modelo de dominio y componentes.** El proyecto todavía no tiene diagrama de clases ni
+    diagrama de componentes como archivos. Los esquemas de `components/schemas` y los grupos
+    de recursos (`tags`) se derivaron del SRS y deben conciliarse con esos diagramas cuando existan.
+    Componentes de backend supuestos por este contrato:
+    - **API REST** (este contrato), detrás de HTTPS (RE-09).
+    - **Servicio de identidad** (JWT, segundo factor del administrador).
+    - **Adaptador del agente de IA** hacia un proveedor externo (RE-04).
+    - **Almacenamiento de archivos** con control de acceso por solicitud (RNF-06).
+    - **Planificador de procesos programados** (expiraciones, recordatorios, vencimientos).
+    - **Servicio de notificaciones**.
+
+    **Convenciones**
+    - Montos en MXN con dos decimales; fechas y horas en ISO 8601 con zona `America/Mexico_City` (RE-08).
+      El formato DD/MM/AAAA y el separador de miles (RNF-14) se aplican en la capa de presentación.
+    - Recursos en sustantivo, minúsculas y kebab-case; las colecciones van en plural. Excepciones deliberadas:
+      `/health` (convención operativa), los alias `yo`, `actual` y `vigente`, los singletons (`domicilio`, `estado`,
+      `resumen-confirmado`, `anonimizacion`, `disponibilidad`, perfiles) y el flujo de `/auth` (ver `revision_rest.md`).
+    - **400** petición mal formada · **422** datos que no cumplen una validación, con cada campo identificado
+      (RNF-01-AC-2) · **409** el estado actual del recurso no permite la operación (transición inválida, plazo
+      vencido, duplicado).
+    - **201** incluye `Location` cuando el recurso creado tiene URL propia. Los POST a colecciones de eventos
+      (`respuestas`, `decisiones`, `modificaciones`) devuelven **200** con el recurso padre actualizado.
+    - GET, PUT, DELETE y PATCH son idempotentes. Los POST con efectos aceptan `Idempotency-Key` para reintentos seguros.
+    - Las respuestas 401/403/404 nunca incluyen domicilio, teléfono, archivos ni datos del proyecto (RNF-03-AC-1, RNF-04-AC-2).
+    - La plataforma no procesa ni registra pagos (RD-14): no hay recursos de pago.
+
+    **Cambios en 0.2.0 (módulo de autenticación JWT).**
+    - El flujo de cuentas y sesiones se agrupa bajo `/auth`: `POST /auth/register` (antes `POST /cuentas`),
+      `POST /auth/login` (antes `POST /sesiones`) y `GET /auth/me` (antes `GET /cuentas/yo`).
+      Las rutas relacionadas se movieron igual: `/auth/segundo-factor`, `/auth/renovacion`, `/auth/sesion`,
+      `/auth/me/contrasena` y `/auth/me/consentimientos`.
+    - Todas las rutas viven bajo el prefijo `/api` (ver `servers`).
+    - Se agregan `DELETE /solicitudes/{solicitudId}` (solo en `borrador`) y `DELETE /casos-soporte/{casoId}`.
+    - El secreto y la vigencia del JWT se configuran con las variables de entorno `JWT_SECRET` y `JWT_EXPIRATION`.
+    - **Implementado en el backend Flask + MySQL de este sprint:** `/health`, `/auth/register`, `/auth/login`,
+      `/auth/me`, CRUD de `/solicitudes` y de `/casos-soporte`. El resto del contrato sigue pendiente,
+      incluido el segundo factor del administrador (RNF-11-AC-2) y la renovación de sesión (RNF-11-AC-3).
+
+    **Trazabilidad.** Cada operación declara `x-acceptance-criteria` con los IDs de los criterios
+    Dado/cuando/entonces que satisface (como disparador o como punto de observación del resultado).
+    La extensión raíz `x-acceptance-coverage` resume los criterios transversales, los que dependen
+    de procesos programados y los **gaps** (criterios sin endpoint).
+  contact:
+    name: Equipo UnCalificado
+servers:
+  - url: https://api.uncalificado.mx/api
+    description: Producción (piloto Jalisco)
+  - url: http://localhost:5000/api
+    description: Desarrollo local
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Salud
+    description: Estado del servicio.
+  - name: Cuentas
+    description: Registro, sesiones, consentimiento y aviso de privacidad (RF-01, RF-02, RNF-11).
+  - name: Proveedores
+    description: Perfiles de trabajador y organización, portafolio, disponibilidad y consulta pública (RF-03 a RF-08, RF-53).
+  - name: Verificaciones
+    description: Verificación de identidad, experiencia y organización, y su retiro (RF-09 a RF-12).
+  - name: Conversaciones
+    description: Conversación guiada con el agente de IA (RF-13 a RF-15, RF-17 a RF-20, RF-22).
+  - name: Solicitudes
+    description: Ciclo de vida del proyecto, adjuntos, representación visual, estados, cierre y domicilio (RF-16 a RF-23, RF-45, RF-47, RF-48, RF-52).
+  - name: Búsqueda
+    description: Proveedores compatibles, recomendaciones, selección e invitaciones (RF-24, RF-26 a RF-32).
+  - name: Citas
+    description: Agendamiento con doble confirmación, bloqueo de franjas, cancelación y reprogramación (RF-33 a RF-37).
+  - name: Propuestas
+    description: Propuesta escrita con desglose, negociación y aceptación (RF-38, RF-39).
+  - name: Cambios
+    description: Cambios de costo, material, alcance o fecha; análisis con IA; versiones de presupuesto; bitácora (RF-40 a RF-44, RF-55, RNF-12).
+  - name: Mensajes
+    description: Canal interno del proyecto (RF-46).
+  - name: Evaluaciones
+    description: Evaluación bidireccional y publicación (RF-49 a RF-51).
+  - name: Soporte
+    description: Solicitudes de soporte humano atendidas por el administrador (RF-22).
+  - name: Privacidad
+    description: Solicitudes ARCO, exportación, rectificación y anonimización (RF-54).
+  - name: Notificaciones
+    description: Avisos para usuarios y administrador.
+
+x-acceptance-coverage:
+  politica: >-
+    Un criterio se considera cubierto si al menos una operación lo lista en
+    x-acceptance-criteria, ya sea porque la dispara o porque expone su resultado observable.
+  transversales:
+    descripcion: >-
+      Se listan en x-acceptance-criteria de cada operación protegida. RNF-04-AC-1 y RNF-04-AC-2
+      (rol y propiedad) aplican a todas, salvo cerrarSesion. RNF-03-AC-1 aplica solo a las rutas de
+      solicitudes, citas, propuestas, cambios y evaluaciones, que son las que nombra el criterio.
+      Las operaciones públicas (security vacía) no los listan.
+    criterios: [RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+  procesosProgramados:
+    descripcion: >-
+      El disparador es el paso del tiempo, no una petición. El endpoint indicado solo expone el resultado.
+      Requieren el componente planificador, que hoy no aparece en ningún diagrama: es un hueco del diseño de componentes.
+    criterios:
+      RF-12-AC-1: Vencimiento de documento de verificación → GET /proveedores/yo, GET /notificaciones
+      RF-32-AC-2: Expiración de invitación (4 h hábiles del prestador) → GET /invitaciones/{invitacionId}, GET /solicitudes/{solicitudId}, GET /notificaciones
+      RF-34-AC-3: Expiración de propuesta de cita (24 h) → GET /citas/{citaId}, GET /notificaciones
+      RF-36-AC-3: Recordatorio 24 h antes de la cita → GET /notificaciones
+      RF-39-AC-4: Cierre de acuerdo a las 72 h sin propuesta aceptada → GET /solicitudes/{solicitudId}/propuestas
+      RF-41-AC-5: Cambio no aceptado a las 24 h → GET /solicitudes/{solicitudId}/cambios
+      RF-41-AC-8: Contrapropuesta rechazada automáticamente a las 24 h → GET /solicitudes/{solicitudId}/cambios
+      RF-48-AC-1: Aviso al administrador por cierre sin respuesta (72 h) → GET /notificaciones
+      RF-51-AC-4: Publicación de calificación a los 7 días → GET /solicitudes/{solicitudId}/evaluaciones
+      RF-52-AC-4: Fin de visibilidad del domicilio 7 días después de concluir → GET /solicitudes/{solicitudId}/domicilio
+      RF-54-AC-5: Aviso de vencimiento ARCO (5 días hábiles) → GET /notificaciones, GET /solicitudes-arco
+      RF-55-AC-5: Expiración de cambio iniciado por el cliente (24 h) → GET /solicitudes/{solicitudId}/cambios
+  gaps:
+    descripcion: Criterios del SRS sin ningún endpoint correspondiente.
+    criterios:
+      RF-25-AC-1: >-
+        Indicador de procesamiento a los 2 s. Es comportamiento del cliente web/app; el contrato no lo
+        puede garantizar. Mitigación posible: respuesta asíncrona (202 + sondeo o SSE) para mensajes al agente.
+      RF-25-AC-2: Igual que RF-25-AC-1 (el indicador no aparece si la respuesta llega antes de 2 s).
+  fueraDelContrato:
+    descripcion: Criterios no funcionales que se verifican con pruebas de UI, de carga, de operación o por inspección, no con un endpoint.
+    criterios: [RNF-01-AC-1, RNF-01-AC-2, RNF-02-AC-1, RNF-02-AC-2, RNF-07-AC-1, RNF-08-AC-1, RNF-08-AC-2, RNF-08-AC-3, RNF-09-AC-1, RNF-14-AC-1]
+  endpointsSinCriterio:
+    descripcion: Operaciones de soporte técnico sin criterio del SRS (trazabilidad inversa).
+    operaciones: [getHealth, cerrarSesion]
+
+paths:
+  # ───────────────────────────── Salud ─────────────────────────────
+  /health:
+    get:
+      tags: [Salud]
+      operationId: getHealth
+      summary: Estado del servicio
+      security: []
+      x-acceptance-criteria: []
+      responses:
+        '200':
+          description: El servicio está operativo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  estado: { type: string, example: ok }
+                  version: { type: string, example: 0.1.0 }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ───────────────────────────── Cuentas ─────────────────────────────
+  /auth/register:
+    post:
+      tags: [Cuentas]
+      operationId: registrarCuenta
+      summary: Registrar una cuenta de cliente, trabajador u organización
+      description: |
+        Crea la cuenta y registra el consentimiento del aviso de privacidad vigente (fecha, hora y versión).
+        No se permite el rol `administrador` (RF-01-AC-3). La contraseña debe tener al menos 10 caracteres (RNF-11).
+      security: []
+      x-acceptance-criteria: [RF-01-AC-1, RF-01-AC-3, RF-02-AC-1, RF-02-AC-2, RNF-11-AC-1]
+      parameters: [$ref: '#/components/parameters/IdempotencyKey']
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistroCuentaRequest'
+      responses:
+        '201':
+          description: Cuenta creada y consentimiento registrado. La respuesta nunca incluye la contraseña ni su hash (se guarda con bcrypt).
+          headers:
+            Location:
+              description: URL del recurso creado (RFC 9110, sección 10.2.2).
+              schema:
+                type: string
+                format: uri-reference
+                example: /api/auth/me
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cuenta' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409':
+          description: El correo ya está registrado (`CORREO_REGISTRADO`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'Datos inválidos: contraseña de menos de 10 caracteres, aviso no aceptado (`CONSENTIMIENTO_REQUERIDO`: "No podemos prestar el servicio sin tu consentimiento"), no declara mayoría de edad, o rol `administrador` (`ROL_NO_PERMITIDO`: las cuentas de administrador se aprovisionan internamente, RF-01-AC-3).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                codigo: ROL_NO_PERMITIDO
+                mensaje: Las cuentas de administrador se aprovisionan internamente.
+                errores: [{ campo: rol, mensaje: Rol no permitido en el registro público. }]
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /auth/login:
+    post:
+      tags: [Cuentas]
+      operationId: iniciarSesion
+      summary: Iniciar sesión
+      description: |
+        Devuelve un JWT de acceso y un token de renovación. Para el administrador, si las credenciales
+        son válidas, devuelve `segundoFactorRequerido: true` y un token temporal sin acceso a la API
+        hasta completar `POST /auth/segundo-factor` (RNF-11-AC-2).
+      security: []
+      x-acceptance-criteria: [RF-01-AC-1, RF-01-AC-2, RNF-11-AC-2]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CredencialesRequest' }
+      responses:
+        '200':
+          description: Sesión iniciada o segundo factor requerido.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SesionRespuesta' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401':
+          description: Credenciales incorrectas. No se permite el acceso (RF-01-AC-2). Mismo mensaje si el correo no existe o la contraseña es incorrecta.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { codigo: CREDENCIALES_INVALIDAS, mensaje: Correo o contraseña incorrectos. }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /auth/segundo-factor:
+    post:
+      tags: [Cuentas]
+      operationId: verificarSegundoFactor
+      summary: Completar el segundo factor (administrador)
+      security: []
+      x-acceptance-criteria: [RNF-11-AC-2]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SegundoFactorRequest' }
+      responses:
+        '200':
+          description: Segundo factor válido; sesión iniciada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SesionRespuesta' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401':
+          description: Código o token temporal inválido o vencido.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /auth/renovacion:
+    post:
+      tags: [Cuentas]
+      operationId: renovarSesion
+      summary: Renovar el token de acceso
+      description: Se rechaza si pasaron 30 minutos sin actividad (RNF-11-AC-3).
+      security: []
+      x-acceptance-criteria: [RNF-11-AC-3]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tokenRenovacion]
+              properties:
+                tokenRenovacion: { type: string }
+      responses:
+        '200':
+          description: Token renovado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SesionRespuesta' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401':
+          description: Sesión cerrada por inactividad o token inválido.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { codigo: SESION_EXPIRADA, mensaje: Tu sesión se cerró por inactividad. }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /auth/sesion:
+    delete:
+      tags: [Cuentas]
+      operationId: cerrarSesion
+      summary: Cerrar la sesión actual
+      x-acceptance-criteria: []
+      responses:
+        '204': { description: Sesión cerrada y token de renovación revocado. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /auth/me:
+    get:
+      tags: [Cuentas]
+      operationId: obtenerCuentaPropia
+      summary: Consultar la cuenta del usuario autenticado
+      description: Devuelve los datos del usuario identificado por el `sub` del JWT. Indica si debe aceptar una versión nueva del aviso de privacidad antes de continuar (RF-02-AC-3).
+      x-acceptance-criteria: [RF-02-AC-3, RNF-04-AC-1, RNF-04-AC-2]
+      responses:
+        '200':
+          description: Cuenta del usuario.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cuenta' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /auth/me/contrasena:
+    patch:
+      tags: [Cuentas]
+      operationId: cambiarContrasena
+      summary: Cambiar la contraseña
+      x-acceptance-criteria: [RNF-11-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [contrasenaActual, contrasenaNueva]
+              properties:
+                contrasenaActual: { type: string, format: password }
+                contrasenaNueva: { type: string, format: password, minLength: 10 }
+      responses:
+        '204': { description: Contraseña actualizada. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /auth/me/consentimientos:
+    post:
+      tags: [Cuentas]
+      operationId: aceptarAvisoVigente
+      summary: Aceptar la versión vigente del aviso de privacidad
+      description: |
+        Mientras el usuario no acepte la versión vigente, cualquier otro endpoint protegido responde
+        403 con `codigo: AVISO_PRIVACIDAD_PENDIENTE` (RF-02-AC-3).
+      x-acceptance-criteria: [RF-02-AC-3, RNF-04-AC-1, RNF-04-AC-2]
+      parameters: [$ref: '#/components/parameters/IdempotencyKey']
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConsentimientoRequest' }
+      responses:
+        '201':
+          description: Consentimiento registrado con fecha, hora y versión.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Consentimiento' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422':
+          description: La versión indicada no es la vigente o no se aceptó.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /avisos-privacidad/vigente:
+    get:
+      tags: [Cuentas]
+      operationId: obtenerAvisoVigente
+      summary: Consultar el aviso de privacidad vigente
+      security: []
+      x-acceptance-criteria: [RF-02-AC-1]
+      responses:
+        '200':
+          description: Aviso vigente.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AvisoPrivacidad' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /avisos-privacidad:
+    post:
+      tags: [Cuentas]
+      operationId: publicarAvisoPrivacidad
+      summary: Publicar una versión nueva del aviso (administrador)
+      description: Al publicarse, todos los usuarios deben aceptarla en su siguiente inicio de sesión (RF-02-AC-3).
+      x-roles: [administrador]
+      x-acceptance-criteria: [RF-02-AC-3, RNF-04-AC-1, RNF-04-AC-2]
+      parameters: [$ref: '#/components/parameters/IdempotencyKey']
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version, texto]
+              properties:
+                version: { type: integer, minimum: 1, example: 2 }
+                texto: { type: string }
+      responses:
+        '201':
+          description: Versión publicada.
+          headers:
+            Location:
+              description: URL del recurso creado (RFC 9110, sección 10.2.2).
+              schema:
+                type: string
+                format: uri-reference
+                example: /api/avisos-privacidad/vigente
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AvisoPrivacidad' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ───────────────────────────── Proveedores ─────────────────────────────
+  /proveedores/yo:
+    get:
+      tags: [Proveedores]
+      operationId: obtenerPerfilPropio
+      summary: Consultar el perfil propio del proveedor
+      description: |
+        Incluye si el perfil es visible en búsquedas, los datos mínimos faltantes y el estado de cada
+        verificación (incluidas las vencidas o retiradas).
+      x-roles: [trabajador, organizacion]
+      x-acceptance-criteria: [RF-03-AC-2, RF-05-AC-2, RF-12-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      responses:
+        '200':
+          description: Perfil propio.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PerfilPropio' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /proveedores/yo/perfil-trabajador:
+    put:
+      tags: [Proveedores]
+      operationId: guardarPerfilTrabajador
+      summary: Crear o reemplazar el perfil del trabajador
+      description: |
+        El perfil se vuelve visible en búsquedas cuando tiene nombre, foto, al menos un oficio del
+        catálogo, años de experiencia y cobertura. Un perfil incompleto se guarda, pero no es visible.
+        La versión guardada es la que se usa en las búsquedas siguientes.
+      x-roles: [trabajador]
+      x-acceptance-criteria: [RF-03-AC-1, RF-03-AC-2, RF-03-AC-3, RF-03-AC-4, RNF-04-AC-1, RNF-04-AC-2]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PerfilTrabajadorRequest' }
+      responses:
+        '200':
+          description: Perfil guardado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PerfilPropio' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422':
+          description: Oficio fuera del catálogo del piloto u otro dato inválido.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                codigo: VALIDACION
+                mensaje: Hay datos inválidos.
+                errores: [{ campo: 'oficios[0]', mensaje: El oficio no pertenece al catálogo del piloto. }]
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /proveedores/yo/perfil-organizacion:
+    put:
+      tags: [Proveedores]
+      operationId: guardarPerfilOrganizacion
+      summary: Crear o reemplazar el perfil de la organización
+      description: El perfil básico completo (nombre, representante, oficios y cobertura) lo hace visible en búsquedas.
+      x-roles: [organizacion]
+      x-acceptance-criteria: [RF-05-AC-1, RF-05-AC-2, RNF-04-AC-1, RNF-04-AC-2]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PerfilOrganizacionRequest' }
+      responses:
+        '200':
+          description: Perfil guardado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PerfilPropio' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /proveedores/yo/fotos-portafolio:
+    post:
+      tags: [Proveedores]
+      operationId: agregarFotoPortafolio
+      summary: Cargar una foto al portafolio
+      x-roles: [trabajador]
+      x-acceptance-criteria: [RF-04-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters: [$ref: '#/components/parameters/IdempotencyKey']
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [archivo]
+              properties:
+                archivo: { type: string, format: binary, description: JPG o PNG. }
+                descripcion: { type: string, maxLength: 280 }
+      responses:
+        '201':
+          description: Foto agregada y visible en el portafolio.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FotoPortafolio' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: El trabajador aún no tiene perfil creado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /proveedores/yo/fotos-portafolio/{fotoId}:
+    delete:
+      tags: [Proveedores]
+      operationId: eliminarFotoPortafolio
+      summary: Quitar una foto del portafolio
+      description: El portafolio es opcional; quitar todas las fotos no invalida ni oculta el perfil (RF-04-AC-2).
+      x-roles: [trabajador]
+      x-acceptance-criteria: [RF-04-AC-2, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/FotoId'
+      responses:
+        '204': { description: Foto eliminada del portafolio. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /proveedores/yo/disponibilidad:
+    patch:
+      tags: [Proveedores]
+      operationId: actualizarDisponibilidad
+      summary: Actualizar la disponibilidad del proveedor
+      description: |
+        El trabajador marca fechas como disponibles o no disponibles. La organización declara una
+        disponibilidad general, sin agenda por empleado (FP-03). Se refleja en búsqueda y agendamiento.
+      x-roles: [trabajador, organizacion]
+      x-acceptance-criteria: [RF-06-AC-1, RF-06-AC-2, RF-06-AC-3, RNF-04-AC-1, RNF-04-AC-2]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/DisponibilidadTrabajadorRequest'
+                - $ref: '#/components/schemas/DisponibilidadOrganizacionRequest'
+      responses:
+        '200':
+          description: Disponibilidad actualizada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Disponibilidad' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /proveedores/{proveedorId}:
+    get:
+      tags: [Proveedores]
+      operationId: consultarPerfilProveedor
+      summary: Consultar el perfil público de un proveedor
+      description: |
+        Cada dato indica si es `declarado` o `verificado` (RF-08). Las calificaciones solo consideran
+        evaluaciones publicadas. Nunca se incluye el teléfono. El domicilio del trabajador solo se
+        incluye si su identidad está verificada y el cliente tiene una cita confirmada con él (RF-53).
+      x-roles: [cliente, trabajador, organizacion, administrador]
+      x-acceptance-criteria: [RF-07-AC-1, RF-07-AC-2, RF-07-AC-3, RF-07-AC-4, RF-07-AC-5, RF-08-AC-1, RF-08-AC-2, RF-08-AC-3, RF-46-AC-2, RF-53-AC-1, RF-53-AC-2, RF-53-AC-3, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/ProveedorId'
+      responses:
+        '200':
+          description: Perfil público del proveedor.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PerfilProveedorPublico' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /proveedores/{proveedorId}/evaluaciones:
+    get:
+      tags: [Proveedores, Evaluaciones]
+      operationId: listarEvaluacionesProveedor
+      summary: Listar las evaluaciones publicadas de un proveedor
+      description: Las evaluaciones no publicadas (RF-51) no aparecen ni cuentan para los promedios.
+      x-acceptance-criteria: [RF-07-AC-5, RF-51-AC-2, RF-51-AC-3, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/ProveedorId'
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/TamanoPagina'
+      responses:
+        '200':
+          description: Resumen y lista paginada de evaluaciones publicadas.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resumen: { $ref: '#/components/schemas/ResumenEvaluaciones' }
+                  elementos:
+                    type: array
+                    items: { $ref: '#/components/schemas/EvaluacionPublicada' }
+                  paginacion: { $ref: '#/components/schemas/Paginacion' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /proveedores/yo/invitaciones:
+    get:
+      tags: [Búsqueda]
+      operationId: listarInvitacionesRecibidas
+      summary: Listar solicitudes recibidas por el proveedor
+      description: Cada invitación incluye la ficha del proyecto con colonia y municipio, sin calle ni número (RF-31-AC-3, RD-15).
+      x-roles: [trabajador, organizacion]
+      x-acceptance-criteria: [RF-31-AC-3, RF-52-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - name: estado
+          in: query
+          schema: { $ref: '#/components/schemas/EstadoInvitacion' }
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/TamanoPagina'
+      responses:
+        '200':
+          description: Invitaciones del proveedor, paginadas.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  elementos:
+                    type: array
+                    items: { $ref: '#/components/schemas/Invitacion' }
+                  paginacion: { $ref: '#/components/schemas/Paginacion' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /invitaciones/{invitacionId}:
+    get:
+      tags: [Búsqueda]
+      operationId: obtenerInvitacion
+      summary: Consultar una invitación
+      description: Estado de la invitación (incluida `expirada`) y ficha del proyecto sin calle ni número.
+      x-roles: [cliente, trabajador, organizacion]
+      x-acceptance-criteria: [RF-31-AC-3, RF-32-AC-1, RF-32-AC-2, RNF-04-AC-1, RNF-04-AC-2]
+      parameters: [$ref: '#/components/parameters/InvitacionId']
+      responses:
+        '200':
+          description: Consultar una invitación.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invitacion'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags: [Búsqueda]
+      operationId: responderInvitacion
+      summary: Aceptar o rechazar una solicitud recibida
+      description: |
+        Al aceptar, el prestador queda asociado al proyecto y puede proponer cita (RF-32-AC-4).
+        Al rechazar, el cliente recibe aviso y las opciones restantes en menos de 1 minuto; si no quedan,
+        se ejecuta una búsqueda nueva que excluye a quienes rechazaron o dejaron expirar (RF-32-AC-3).
+      x-roles: [trabajador, organizacion]
+      x-acceptance-criteria: [RF-32-AC-1, RF-32-AC-3, RF-32-AC-4, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/InvitacionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [aceptar, rechazar] }
+                motivo: { type: string, maxLength: 500 }
+      responses:
+        '200':
+          description: Invitación actualizada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Invitacion' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: La invitación ya expiró o ya fue respondida (`INVITACION_NO_PENDIENTE`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ───────────────────────────── Verificaciones ─────────────────────────────
+  /proveedores/yo/verificaciones:
+    post:
+      tags: [Verificaciones]
+      operationId: enviarEvidenciaVerificacion
+      summary: Enviar evidencia para una verificación
+      description: |
+        `identidad` (identificación oficial, trabajador), `experiencia` (referencias, certificados o fotos,
+        trabajador) u `organizacion` (constitución o representante legal). Queda en estado `pendiente`.
+      x-roles: [trabajador, organizacion]
+      x-acceptance-criteria: [RF-09-AC-1, RF-10-AC-1, RF-11-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters: [$ref: '#/components/parameters/IdempotencyKey']
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [tipo, archivos]
+              properties:
+                tipo: { $ref: '#/components/schemas/TipoVerificacion' }
+                archivos:
+                  type: array
+                  items: { type: string, format: binary }
+                fechaVencimiento: { type: string, format: date, description: 'Vigencia del documento, si aplica (RF-12).' }
+                notas: { type: string, maxLength: 1000 }
+      responses:
+        '201':
+          description: Evidencia registrada para revisión.
+          headers:
+            Location:
+              description: URL del recurso creado (RFC 9110, sección 10.2.2).
+              schema:
+                type: string
+                format: uri-reference
+                example: /api/verificaciones/{verificacionId}
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Verificacion' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: El tipo de verificación no corresponde a la modalidad del proveedor.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /verificaciones:
+    get:
+      tags: [Verificaciones]
+      operationId: listarVerificaciones
+      summary: Listar verificaciones para revisión (administrador)
+      x-roles: [administrador]
+      x-acceptance-criteria: [RF-09-AC-1, RF-10-AC-1, RF-11-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - name: estado
+          in: query
+          schema: { $ref: '#/components/schemas/EstadoVerificacion' }
+        - name: tipo
+          in: query
+          schema: { $ref: '#/components/schemas/TipoVerificacion' }
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/TamanoPagina'
+      responses:
+        '200':
+          description: Verificaciones.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  elementos:
+                    type: array
+                    items: { $ref: '#/components/schemas/Verificacion' }
+                  paginacion: { $ref: '#/components/schemas/Paginacion' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /verificaciones/{verificacionId}/documentos/{documentoId}:
+    get:
+      tags: [Verificaciones]
+      operationId: descargarDocumentoVerificacion
+      summary: Descargar un documento de verificación (administrador)
+      x-roles: [administrador]
+      x-acceptance-criteria: [RNF-05-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/VerificacionId'
+        - name: documentoId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Archivo del documento.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /verificaciones/{verificacionId}:
+    get:
+      tags: [Verificaciones]
+      operationId: obtenerVerificacion
+      summary: Consultar una verificación
+      description: El proveedor solo puede consultar las suyas; incluye el motivo de rechazo o retiro.
+      x-roles: [administrador, trabajador, organizacion]
+      x-acceptance-criteria: [RF-09-AC-2, RF-10-AC-2, RF-11-AC-2, RNF-04-AC-1, RNF-04-AC-2]
+      parameters: [$ref: '#/components/parameters/VerificacionId']
+      responses:
+        '200':
+          description: Consultar una verificación.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Verificacion'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags: [Verificaciones]
+      operationId: resolverVerificacion
+      summary: Aprobar, rechazar o retirar una verificación (administrador)
+      description: |
+        Al aprobar, el perfil muestra la marca y se registran fecha y administrador. Al rechazar o retirar, el
+        proveedor recibe una notificación con el motivo y el perfil sigue visible sin la marca. El retiro por
+        información falsa solo lo decide el administrador; el sistema no determina la falsedad por sí solo (RF-12-AC-2).
+      x-roles: [administrador]
+      x-acceptance-criteria: [RF-09-AC-1, RF-09-AC-2, RF-10-AC-1, RF-10-AC-2, RF-11-AC-1, RF-11-AC-2, RF-08-AC-3, RF-12-AC-2, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/VerificacionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DecisionVerificacionRequest' }
+      responses:
+        '200':
+          description: Verificación resuelta.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Verificacion' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Solo se aprueba o rechaza una verificación `pendiente` y solo se retira una `aprobada`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Falta el motivo (obligatorio al rechazar o retirar) o el origen del retiro.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ───────────────────────────── Conversaciones (agente de IA) ─────────────────────────────
+  /conversaciones:
+    post:
+      tags: [Conversaciones]
+      operationId: iniciarConversacion
+      summary: Iniciar una conversación con el agente
+      description: |
+        El primer mensaje del agente indica explícitamente que es un asistente automático (RF-13-AC-1).
+        Si el servicio de IA no está disponible responde **503** con `capturaManualDisponible: true`
+        para que el cliente use `POST /solicitudes` (RF-21-AC-1).
+      x-roles: [cliente]
+      x-acceptance-criteria: [RF-13-AC-1, RF-14-AC-1, RF-21-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters: [$ref: '#/components/parameters/IdempotencyKey']
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                descripcionInicial: { type: string, maxLength: 4000 }
+      responses:
+        '201':
+          description: Conversación creada con el primer mensaje del agente.
+          headers:
+            Location:
+              description: URL del recurso creado (RFC 9110, sección 10.2.2).
+              schema:
+                type: string
+                format: uri-reference
+                example: /api/conversaciones/{conversacionId}
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Conversacion' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/IAnoDisponible' }
+
+  /conversaciones/{conversacionId}:
+    get:
+      tags: [Conversaciones]
+      operationId: obtenerConversacion
+      summary: Recuperar una conversación completa
+      description: Devuelve todos los mensajes; permite recuperar el estado tras una caída o reconexión (RNF-13).
+      x-roles: [cliente, administrador]
+      x-acceptance-criteria: [RF-13-AC-2, RNF-13-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/ConversacionId'
+      responses:
+        '200':
+          description: Conversación.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Conversacion' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /conversaciones/{conversacionId}/mensajes:
+    post:
+      tags: [Conversaciones]
+      operationId: enviarMensajeAgente
+      summary: Enviar un mensaje (y adjuntos opcionales) al agente
+      description: |
+        El agente responde con **una sola pregunta** a la vez, pide datos del oficio (medidas, condiciones,
+        materiales y quién los compra), registra "desconocido" sin inventar, repregunta o pide foto ante
+        ambigüedad, y presenta un resumen editable cuando reúne los datos mínimos.
+        Tras 2 aclaraciones sin oficio o 2 correcciones consecutivas, ofrece soporte (`ofrecerSoporte: true`).
+        Si el cliente tiene más de un proyecto activo y adjunta una imagen, el agente pregunta a cuál
+        corresponde antes de asociarla. Las notas de voz se rechazan con los formatos aceptados.
+      x-roles: [cliente]
+      x-acceptance-criteria: [RF-14-AC-1, RF-14-AC-2, RF-14-AC-3, RF-14-AC-4, RF-15-AC-3, RF-15-AC-4, RF-16-AC-1, RF-17-AC-1, RF-17-AC-3, RF-18-AC-4, RF-19-AC-1, RF-19-AC-2, RF-20-AC-1, RF-20-AC-2, RF-22-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/ConversacionId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/MensajeClienteRequest' }
+          application/json:
+            schema: { $ref: '#/components/schemas/MensajeClienteRequest' }
+      responses:
+        '200':
+          description: Respuesta del agente.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RespuestaAgente' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: |
+            Adjunto no aceptado: nota de voz (`FORMATO_NO_ACEPTADO`, indica texto, fotos y videos),
+            imagen mayor a 5 MB o proyecto con 10 imágenes.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/IAnoDisponible' }
+  /clasificaciones-oficio:
+    post:
+      tags: [Conversaciones]
+      operationId: clasificarDescripcion
+      summary: Clasificar una descripción en el catálogo de oficios (evaluación interna)
+      description: |
+        Endpoint interno que usa el script de evaluación con el conjunto de 50 descripciones etiquetadas
+        (meta ≥ 45 aciertos). El oficio resultante es nulo o una de las 10 categorías del catálogo.
+        Se usa POST porque el texto puede ser largo, pero la operación es **segura e idempotente**: no crea ni modifica recursos.
+      x-roles: [administrador]
+      x-acceptance-criteria: [RF-15-AC-1, RF-15-AC-2, RNF-04-AC-1, RNF-04-AC-2]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [descripcion]
+              properties:
+                descripcion: { type: string, minLength: 1, maxLength: 4000 }
+      responses:
+        '200':
+          description: Resultado de clasificación.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [oficio]
+                properties:
+                  oficio:
+                    allOf: [$ref: '#/components/schemas/Oficio']
+                    nullable: true
+                  requiereAclaracion: { type: boolean }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/IAnoDisponible' }
+
+  # ───────────────────────────── Solicitudes ─────────────────────────────
+  /solicitudes:
+    post:
+      tags: [Solicitudes]
+      operationId: crearSolicitud
+      summary: Crear una solicitud en borrador (captura manual)
+      description: |
+        Se usa cuando la IA no está disponible (RF-21) o el cliente prefiere capturarla. Exige resultado
+        esperado, oficio y zona aproximada; no pide calle ni número (RF-16-AC-5).
+      x-roles: [cliente]
+      x-acceptance-criteria: [RF-16-AC-1, RF-16-AC-2, RF-16-AC-5, RF-21-AC-1, RF-21-AC-3, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters: [$ref: '#/components/parameters/IdempotencyKey']
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CrearSolicitudRequest' }
+      responses:
+        '201':
+          description: Solicitud creada en estado `borrador`; incluye su identificador.
+          headers:
+            Location:
+              description: URL del recurso creado (RFC 9110, sección 10.2.2).
+              schema:
+                type: string
+                format: uri-reference
+                example: /api/solicitudes/{solicitudId}
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Solicitud' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422':
+          description: Faltan campos obligatorios; se identifica cada uno.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                codigo: VALIDACION
+                mensaje: Faltan datos obligatorios.
+                errores:
+                  - { campo: resultadoEsperado, mensaje: Describe el resultado que esperas. }
+                  - { campo: zona.colonia, mensaje: Indica tu colonia o zona aproximada. }
+        '500': { $ref: '#/components/responses/InternalError' }
+    get:
+      tags: [Solicitudes]
+      operationId: listarSolicitudes
+      summary: Listar las solicitudes del usuario
+      description: Para el cliente, sus solicitudes; para el proveedor, aquellas a las que está asociado.
+      x-roles: [cliente, trabajador, organizacion]
+      x-acceptance-criteria: [RF-45-AC-1, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - name: estado
+          in: query
+          schema: { $ref: '#/components/schemas/EstadoProyecto' }
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/TamanoPagina'
+      responses:
+        '200':
+          description: Lista paginada.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  elementos:
+                    type: array
+                    items: { $ref: '#/components/schemas/SolicitudResumen' }
+                  paginacion: { $ref: '#/components/schemas/Paginacion' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /solicitudes/{solicitudId}:
+    get:
+      tags: [Solicitudes]
+      operationId: obtenerSolicitud
+      summary: Consultar una solicitud
+      description: |
+        Incluye estado del proyecto, proveedor asociado, estado de las invitaciones (incluidas las expiradas),
+        partes del trabajo en pausa por cambios pendientes y conteo de alertas sin atender.
+        Para el proveedor, la ubicación se limita a colonia y municipio hasta el momento de revelación (RF-52).
+      x-roles: [cliente, trabajador, organizacion, administrador]
+      x-acceptance-criteria: [RF-31-AC-2, RF-32-AC-2, RF-41-AC-4, RF-45-AC-1, RF-45-AC-2, RNF-13-AC-1, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+      responses:
+        '200':
+          description: Solicitud.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Solicitud' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    patch:
+      tags: [Solicitudes]
+      operationId: actualizarSolicitud
+      summary: Editar una solicitud en borrador
+      description: |
+        Permite corregir el resumen o agregar información complementaria (descripción, medidas, materiales).
+        La solicitud permanece en `borrador` hasta su confirmación (RF-20-AC-2).
+      x-roles: [cliente]
+      x-acceptance-criteria: [RF-16-AC-5, RF-20-AC-2, RF-21-AC-2, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ActualizarSolicitudRequest' }
+      responses:
+        '200':
+          description: Solicitud actualizada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Solicitud' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: La solicitud ya no está en `borrador` (`SOLICITUD_NO_EDITABLE`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500': { $ref: '#/components/responses/InternalError' }
+    delete:
+      tags: [Solicitudes]
+      operationId: eliminarSolicitud
+      summary: Eliminar una solicitud en borrador
+      description: Solo el cliente dueño puede eliminarla y únicamente mientras está en `borrador`.
+      x-roles: [cliente]
+      x-acceptance-criteria: [RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+      responses:
+        '204': { description: Solicitud eliminada. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: La solicitud ya no está en `borrador` (`SOLICITUD_NO_ELIMINABLE`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /solicitudes/{solicitudId}/resumen-confirmado:
+    put:
+      tags: [Solicitudes]
+      operationId: confirmarSolicitud
+      summary: Confirmar (crear o reafirmar) el resumen de la solicitud
+      description: |
+        Guarda la versión confirmada del resumen, la única que se usa para recomendaciones, pasa la solicitud
+        a `confirmada` y registra fecha y hora. Exige tipo de trabajo, zona, fecha deseada y descripción básica;
+        fotos, videos, medidas y presupuesto son opcionales. Conserva los valores "desconocido".
+        **Idempotente:** repetir la petición con el mismo resumen devuelve 200 sin cambios; un resumen distinto
+        sobre una solicitud ya confirmada responde 409.
+      x-roles: [cliente]
+      x-acceptance-criteria: [RF-14-AC-5, RF-16-AC-3, RF-16-AC-4, RF-17-AC-2, RF-20-AC-3, RF-20-AC-4, RF-23-AC-2, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [resumenConfirmado]
+              properties:
+                resumenConfirmado: { $ref: '#/components/schemas/ResumenSolicitud' }
+                representacionVisualId:
+                  type: string
+                  format: uuid
+                  description: Representación aprobada que se guarda como versión de referencia (RF-23-AC-2).
+      responses:
+        '200':
+          description: Solicitud confirmada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Solicitud' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: La solicitud ya se confirmó con un resumen distinto o ya no está en `borrador`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'Faltan datos mínimos de búsqueda: tipo de trabajo, zona, fecha deseada o descripción básica; se identifica cada uno.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /solicitudes/{solicitudId}/estado:
+    patch:
+      tags: [Solicitudes]
+      operationId: actualizarEstadoProyecto
+      summary: Cambiar el estado del proyecto (máquina de estados)
+      description: |
+        Única operación para las transiciones que disparan los usuarios (RF-45). Cada rol solo puede:
+        - **Proveedor asociado:** `programado → en_proceso`, solo con propuesta aceptada (RF-39-AC-5, RF-45-AC-2);
+          `en_proceso → terminado`, que registra la solicitud de cierre visible al cliente (RF-47-AC-2).
+        - **Cliente:** `terminado → concluido` (confirma el cierre; se habilitan las evaluaciones y ambas partes
+          reciben la solicitud de calificación en menos de 5 minutos) o `terminado → en_proceso` (rechaza el cierre;
+          `pendientes` es obligatorio y el proveedor lo recibe en menos de 1 minuto).
+        - **Administrador:** ninguna; responde 403 (RF-48-AC-2).
+        Las transiciones `borrador → confirmada` y `confirmada → programado` las disparan
+        `PUT /resumen-confirmado` y la confirmación de la primera cita. Cualquier otra transición responde 409.
+      x-roles: [trabajador, organizacion, cliente]
+      x-acceptance-criteria: [RF-39-AC-5, RF-45-AC-1, RF-45-AC-2, RF-47-AC-1, RF-47-AC-2, RF-48-AC-2, RF-47-AC-3, RF-47-AC-4, RF-51-AC-1, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [estado]
+              properties:
+                estado: { type: string, enum: [en_proceso, terminado, concluido] }
+                nota: { type: string, maxLength: 1000 }
+                pendientes:
+                  type: string
+                  maxLength: 2000
+                  description: Obligatorio cuando el cliente rechaza el cierre (terminado → en_proceso).
+      responses:
+        '200':
+          description: Estado actualizado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Solicitud' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Transición no permitida desde el estado actual (`TRANSICION_INVALIDA`) o sin propuesta aceptada (`PROPUESTA_NO_ACEPTADA`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Falta la descripción de `pendientes` al rechazar el cierre.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /solicitudes/{solicitudId}/domicilio:
+    get:
+      tags: [Solicitudes]
+      operationId: obtenerDomicilioCliente
+      summary: Consultar el domicilio del cliente (proveedor asociado)
+      description: |
+        Antes de la cita de visita confirmada o de la propuesta aceptada, solo devuelve colonia y municipio
+        (`revelado: false`). Después, devuelve domicilio exacto y fotos o videos del lugar, solo al
+        trabajador de ese proyecto. 7 días después de `concluido` deja de mostrarse. Otro trabajador recibe 403.
+      x-roles: [cliente, trabajador, organizacion]
+      x-acceptance-criteria: [RF-52-AC-1, RF-52-AC-4, RF-52-AC-5, RNF-05-AC-1, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+      responses:
+        '200':
+          description: Ubicación visible para el solicitante según el momento del proyecto.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UbicacionVisible' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /solicitudes/{solicitudId}/adjuntos:
+    post:
+      tags: [Solicitudes]
+      operationId: adjuntarArchivo
+      summary: Adjuntar una foto o video a la solicitud
+      description: |
+        Imágenes JPG o PNG de hasta 5 MB, máximo 10 por proyecto. Videos permitidos (límites en PV-01).
+        Notas de voz no se procesan (FP-01).
+      x-roles: [cliente]
+      x-acceptance-criteria: [RF-17-AC-1, RF-17-AC-3, RF-18-AC-1, RF-18-AC-2, RF-18-AC-3, RF-21-AC-2, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [archivo]
+              properties:
+                archivo: { type: string, format: binary }
+                esDelDomicilio:
+                  type: boolean
+                  default: false
+                  description: Fotos o videos del lugar; se revelan con el domicilio (RF-52).
+      responses:
+        '201':
+          description: Archivo asociado; incluye el contador de imágenes.
+          headers:
+            Location:
+              description: URL del recurso creado (RFC 9110, sección 10.2.2).
+              schema:
+                type: string
+                format: uri-reference
+                example: /api/solicitudes/{solicitudId}/adjuntos/{adjuntoId}
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Adjunto' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: |
+            `TAMANO_EXCEDIDO` (límite 5 MB), `LIMITE_IMAGENES` (10; pide indicar cuál reemplazar)
+            o `FORMATO_NO_ACEPTADO` (formatos aceptados: texto, fotos y videos).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /solicitudes/{solicitudId}/adjuntos/{adjuntoId}:
+    get:
+      tags: [Solicitudes]
+      operationId: descargarAdjunto
+      summary: Descargar un adjunto
+      description: Solo el cliente, los proveedores autorizados y el administrador (RNF-06).
+      x-acceptance-criteria: [RNF-05-AC-1, RNF-06-AC-1, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+        - $ref: '#/components/parameters/AdjuntoId'
+      responses:
+        '200':
+          description: Archivo.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    delete:
+      tags: [Solicitudes]
+      operationId: eliminarAdjunto
+      summary: Quitar un adjunto (por ejemplo, para reemplazar una imagen)
+      x-roles: [cliente]
+      x-acceptance-criteria: [RF-18-AC-3, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+        - $ref: '#/components/parameters/AdjuntoId'
+      responses:
+        '204': { description: Adjunto eliminado; el contador disminuye. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: La solicitud ya no admite cambios de adjuntos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /solicitudes/{solicitudId}/representaciones-visuales:
+    post:
+      tags: [Solicitudes]
+      operationId: generarRepresentacionVisual
+      summary: Pedir al agente una representación visual del alcance
+      description: Requiere al menos una imagen de referencia y el resultado esperado. No es plano técnico (RD-08).
+      x-roles: [cliente]
+      x-acceptance-criteria: [RF-23-AC-1, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [imagenesReferencia, descripcion]
+              properties:
+                imagenesReferencia:
+                  type: array
+                  minItems: 1
+                  items: { type: string, format: uuid, description: ID de adjunto. }
+                descripcion: { type: string, minLength: 1, maxLength: 2000 }
+      responses:
+        '201':
+          description: Representación generada y asociada a la solicitud.
+          headers:
+            Location:
+              description: URL del recurso creado (RFC 9110, sección 10.2.2).
+              schema:
+                type: string
+                format: uri-reference
+                example: /api/solicitudes/{solicitudId}/representaciones-visuales/{representacionId}
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RepresentacionVisual' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: Sin imagen de referencia o sin descripción del resultado esperado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/IAnoDisponible' }
+
+  /solicitudes/{solicitudId}/representaciones-visuales/{representacionId}:
+    get:
+      tags: [Solicitudes]
+      operationId: obtenerRepresentacionVisual
+      summary: Consultar una representación visual
+      x-acceptance-criteria: [RF-23-AC-2, RNF-06-AC-1, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+        - $ref: '#/components/parameters/RepresentacionId'
+      responses:
+        '200':
+          description: Representación visual.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RepresentacionVisual' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    patch:
+      tags: [Solicitudes]
+      operationId: actualizarRepresentacionVisual
+      summary: Editar la descripción o aprobar la representación
+      x-roles: [cliente]
+      x-acceptance-criteria: [RF-23-AC-1, RF-23-AC-2, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+        - $ref: '#/components/parameters/RepresentacionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                descripcion: { type: string, maxLength: 2000 }
+                aprobada: { type: boolean }
+      responses:
+        '200':
+          description: Representación actualizada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RepresentacionVisual' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ───────────────────────────── Búsqueda y recomendación ─────────────────────────────
+  /solicitudes/{solicitudId}/proveedores-compatibles:
+    get:
+      tags: [Búsqueda]
+      operationId: buscarProveedoresCompatibles
+      summary: Buscar proveedores compatibles con la solicitud confirmada
+      description: |
+        Combina oficio, cobertura (colonia o vecinas), disponibilidad en la fecha y evaluación. Incluye
+        proveedores sin verificar o con verificación retirada, mostrando su estado. Ningún criterio
+        depende de pagos. Sin coincidencias devuelve `elementos: []` y el mensaje
+        "No hay proveedores disponibles para los criterios seleccionados". No exige domicilio exacto.
+        La respuesta indica siempre el orden y los filtros aplicados.
+      x-roles: [cliente]
+      x-acceptance-criteria: [RF-08-AC-3, RF-16-AC-3, RF-16-AC-4, RF-16-AC-5, RF-17-AC-2, RF-20-AC-3, RF-26-AC-1, RF-26-AC-2, RF-26-AC-3, RF-26-AC-4, RF-27-AC-1, RF-28-AC-1, RF-28-AC-2, RF-29-AC-1, RF-29-AC-2, RF-29-AC-3, RF-29-AC-4, RF-29-AC-5, RF-29-AC-6, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+        - name: identidadVerificada
+          in: query
+          description: Filtro opcional (RF-28).
+          schema: { type: boolean }
+        - name: experienciaSimilar
+          in: query
+          description: Filtro opcional (RF-28).
+          schema: { type: boolean }
+        - name: calificacionMin
+          in: query
+          schema: { type: number, minimum: 1, maximum: 5 }
+        - name: precioMax
+          in: query
+          schema: { type: number, minimum: 0 }
+        - name: precioMin
+          in: query
+          schema: { type: number, minimum: 0 }
+        - name: conGarantia
+          in: query
+          schema: { type: boolean }
+        - name: soloColoniaPropia
+          in: query
+          description: Filtro de cercanía; excluye a quienes solo cubren colonias vecinas.
+          schema: { type: boolean }
+        - name: incluirSinValor
+          in: query
+          description: Incluye resultados sin valor comparable al aplicar filtros numéricos (RF-29-AC-3).
+          schema: { type: boolean, default: false }
+        - $ref: '#/components/parameters/OrdenResultados'
+      responses:
+        '200':
+          description: Resultados (posiblemente vacíos).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultadoBusqueda' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: La solicitud no está confirmada o le faltan tipo de trabajo, zona, fecha deseada o descripción básica (RF-16-AC-3).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /solicitudes/{solicitudId}/recomendaciones:
+    post:
+      tags: [Búsqueda]
+      operationId: generarRecomendaciones
+      summary: Generar la recomendación del agente (3 a 4 proveedores)
+      description: |
+        Usa solo la versión confirmada. Con 4 o más candidatos devuelve entre 3 y 4; con menos de 3,
+        los que existan e indica `menosOpcionesDeLasHabituales: true`. Cada opción explica por qué se
+        sugiere sin depender de pagos ni de criterios no comunicados. El cliente elige; la IA no asigna.
+      x-roles: [cliente]
+      x-acceptance-criteria: [RF-20-AC-3, RF-30-AC-1, RF-30-AC-2, RF-30-AC-3, RF-30-AC-4, RNF-10-AC-1, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: Conjunto de recomendaciones.
+          headers:
+            Location:
+              description: URL del recurso creado (RFC 9110, sección 10.2.2).
+              schema:
+                type: string
+                format: uri-reference
+                example: /api/solicitudes/{solicitudId}/recomendaciones
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConjuntoRecomendaciones' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: La solicitud no está confirmada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/IAnoDisponible' }
+    get:
+      tags: [Búsqueda]
+      operationId: obtenerRecomendaciones
+      summary: Consultar la recomendación vigente
+      description: |
+        Admite ordenar y filtrar como la búsqueda. Cuando un acuerdo se cierra sin efecto (rechazo o
+        expiración de la propuesta), el cliente vuelve aquí para elegir otra opción (RF-39-AC-3, RF-39-AC-4).
+      x-roles: [cliente]
+      x-acceptance-criteria: [RF-29-AC-1, RF-29-AC-2, RF-30-AC-3, RF-30-AC-4, RF-39-AC-3, RF-39-AC-4, RNF-10-AC-1, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+        - $ref: '#/components/parameters/OrdenResultados'
+      responses:
+        '200':
+          description: Recomendación vigente.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConjuntoRecomendaciones' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /solicitudes/{solicitudId}/invitaciones:
+    post:
+      tags: [Búsqueda]
+      operationId: seleccionarProveedor
+      summary: Seleccionar un proveedor (crea la invitación)
+      description: |
+        Seleccionar un proveedor crea una invitación para él. Acción sensible: requiere
+        `autorizacionExplicita: true` (RF-24). Si el cliente no la autoriza, la acción no se ejecuta y se responde
+        422 `AUTORIZACION_REQUERIDA` (RF-24-AC-2). El proveedor recibe la ficha con colonia y municipio, sin calle ni número.
+      x-roles: [cliente]
+      x-acceptance-criteria: [RF-24-AC-1, RF-24-AC-2, RF-31-AC-1, RF-31-AC-3, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [proveedorId, autorizacionExplicita]
+              properties:
+                proveedorId: { type: string, format: uuid }
+                autorizacionExplicita: { type: boolean }
+      responses:
+        '201':
+          description: Proveedor asociado e invitación enviada.
+          headers:
+            Location:
+              description: URL del recurso creado (RFC 9110, sección 10.2.2).
+              schema:
+                type: string
+                format: uri-reference
+                example: /api/invitaciones/{invitacionId}
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Invitacion' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: La solicitud no está confirmada o ya tiene un proveedor asociado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'Falta la autorización explícita del cliente (`AUTORIZACION_REQUERIDA`): la acción no se ejecutó (RF-24-AC-2). También si el proveedor no es compatible o no está disponible.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ───────────────────────────── Citas ─────────────────────────────
+  /solicitudes/{solicitudId}/citas:
+    post:
+      tags: [Citas]
+      operationId: proponerCita
+      summary: Proponer y confirmar una cita (prestador)
+      description: |
+        El prestador (trabajador u organización, sin asignar plantilla) propone fecha y hora, indica el
+        costo o "sin costo" en MXN y la confirma de su lado. La cita queda `pendiente` hasta que el cliente
+        confirme. También sirve para reprogramar tras una cancelación, sin cancelar el proyecto.
+      x-roles: [trabajador, organizacion]
+      x-acceptance-criteria: [RF-32-AC-4, RF-33-AC-1, RF-34-AC-1, RF-34-AC-5, RF-37-AC-3, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProponerCitaRequest' }
+      responses:
+        '201':
+          description: Cita en estado `pendiente`.
+          headers:
+            Location:
+              description: URL del recurso creado (RFC 9110, sección 10.2.2).
+              schema:
+                type: string
+                format: uri-reference
+                example: /api/citas/{citaId}
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cita' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: La franja se traslapa con una cita ya confirmada del prestador (`FRANJA_OCUPADA`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: La fecha está fuera de la disponibilidad del prestador o los datos son inválidos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500': { $ref: '#/components/responses/InternalError' }
+    get:
+      tags: [Citas]
+      operationId: listarCitas
+      summary: Listar las citas de la solicitud
+      x-acceptance-criteria: [RF-34-AC-3, RF-37-AC-2, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+      responses:
+        '200':
+          description: Citas con su historial de modificaciones.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Cita' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /citas/{citaId}:
+    get:
+      tags: [Citas]
+      operationId: obtenerCita
+      summary: Consultar una cita
+      description: Muestra costo o "sin costo" y moneda antes de confirmar (RF-33-AC-1), estado (incluido `expirada`) e historial.
+      x-acceptance-criteria: [RF-33-AC-1, RF-34-AC-3, RF-37-AC-2, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/CitaId'
+      responses:
+        '200':
+          description: Cita.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cita' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /citas/{citaId}/respuestas:
+    post:
+      tags: [Citas]
+      operationId: responderCita
+      summary: Confirmar o rechazar una cita (cliente)
+      description: |
+        Acción sensible (RF-24). Al confirmar:
+        - la cita pasa a `confirmada`, se bloquea la franja y el proyecto `confirmada → programado` si es la primera;
+        - ambas partes reciben notificación con fecha, hora y lugar;
+        - si es cita de visita, el cliente proporciona su domicilio y se revela solo a ese trabajador (RF-52-AC-3).
+        Una cita de ejecución sin propuesta aceptada se rechaza (RF-34-AC-6). Si otra confirmación ganó la
+        franja traslapada, responde **409** y el cliente debe elegir otra fecha (RF-35-AC-3).
+      x-roles: [cliente]
+      x-acceptance-criteria: [RF-24-AC-1, RF-24-AC-2, RF-24-AC-3, RF-34-AC-2, RF-34-AC-4, RF-34-AC-6, RF-35-AC-1, RF-35-AC-3, RF-36-AC-1, RF-36-AC-2, RF-52-AC-3, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/CitaId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RespuestaCitaRequest' }
+      responses:
+        '200':
+          description: Cita confirmada, o rechazada sin ejecutar la acción.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cita' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: La franja ya la confirmó otra cita registrada primero (`FRANJA_OCUPADA`, RF-35-AC-3), la cita expiró o ya fue respondida, o es de ejecución sin propuesta aceptada (`PROPUESTA_NO_ACEPTADA`, RF-34-AC-6).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                codigo: FRANJA_OCUPADA
+                mensaje: Esta fecha ya no está disponible. Elige otra.
+        '422':
+          description: Falta el domicilio al confirmar una cita de visita.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500': { $ref: '#/components/responses/InternalError' }
+  /citas/{citaId}/modificaciones:
+    post:
+      tags: [Citas]
+      operationId: registrarModificacionCita
+      summary: Registrar una cancelación, un cambio de fecha o un retraso
+      description: |
+        Cada modificación es un registro nuevo con quién la solicitó y cuándo (RF-37-AC-2); la otra parte recibe
+        una notificación. `cancelacion` exige motivo y `confirmacion: true`, libera la franja y no cancela el proyecto;
+        después el prestador puede proponer otra cita (RF-37-AC-3). Responde 200 con la cita actualizada.
+      x-acceptance-criteria: [RF-37-AC-2, RF-24-AC-1, RF-35-AC-2, RF-37-AC-1, RF-37-AC-3, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters: [$ref: '#/components/parameters/CitaId', $ref: '#/components/parameters/IdempotencyKey']
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModificarCitaRequest'
+      responses:
+        '200':
+          description: Modificación registrada; se devuelve la cita actualizada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cita'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: La cita no está `pendiente` ni `confirmada`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Falta el motivo, la confirmación de la cancelación o el nuevo horario.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ───────────────────────────── Propuestas ─────────────────────────────
+  /solicitudes/{solicitudId}/propuestas:
+    post:
+      tags: [Propuestas]
+      operationId: enviarPropuesta
+      summary: Enviar una propuesta o una versión revisada
+      description: |
+        Desglose separado de mano de obra, materiales y costos adicionales; total en MXN, versión y fecha.
+        Se rechaza si un material carece de descripción, cantidad, unidad, precio unitario o subtotal, o si
+        los subtotales no suman el total. No requiere visita previa. Una versión revisada responde a un
+        ajuste pedido por el cliente y no reinicia el plazo de 72 h.
+      x-roles: [trabajador, organizacion]
+      x-acceptance-criteria: [RF-38-AC-1, RF-38-AC-2, RF-38-AC-3, RF-39-AC-2, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PropuestaRequest' }
+      responses:
+        '201':
+          description: Propuesta enviada al cliente.
+          headers:
+            Location:
+              description: URL del recurso creado (RFC 9110, sección 10.2.2).
+              schema:
+                type: string
+                format: uri-reference
+                example: /api/propuestas/{propuestaId}
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Propuesta' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: El acuerdo con este proveedor ya se cerró (rechazo o 72 h) o ya existe una propuesta aceptada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Material incompleto (`MATERIAL_INCOMPLETO`) o subtotales que no suman el total (`TOTAL_INCONSISTENTE`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500': { $ref: '#/components/responses/InternalError' }
+    get:
+      tags: [Propuestas]
+      operationId: listarPropuestas
+      summary: Listar las propuestas y versiones de la solicitud
+      description: Muestra el estado de cada versión, incluido el cierre sin efecto a las 72 h.
+      x-acceptance-criteria: [RF-39-AC-2, RF-39-AC-4, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+      responses:
+        '200':
+          description: Propuestas.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Propuesta' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /propuestas/{propuestaId}:
+    get:
+      tags: [Propuestas]
+      operationId: obtenerPropuesta
+      summary: Consultar una propuesta
+      x-acceptance-criteria: [RF-38-AC-1, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/PropuestaId'
+      responses:
+        '200':
+          description: Propuesta.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Propuesta' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /propuestas/{propuestaId}/respuestas:
+    post:
+      tags: [Propuestas]
+      operationId: responderPropuesta
+      summary: Aceptar, pedir cambios o rechazar una propuesta (cliente)
+      description: |
+        - `aceptar`: acuerdo aceptado; se registra fecha, hora y autor, y la propuesta se vuelve el presupuesto
+          inicial. Si no hubo visita, el cliente proporciona su domicilio y se revela solo a ese trabajador (RF-52-AC-2).
+        - `pedir_cambios`: el proveedor debe enviar una versión revisada.
+        - `rechazar`: el acuerdo con ese proveedor se cierra sin efecto; el cliente vuelve a las recomendaciones.
+        Toda decisión se registra en la bitácora (RNF-12).
+      x-roles: [cliente]
+      x-acceptance-criteria: [RF-24-AC-3, RF-39-AC-1, RF-39-AC-2, RF-39-AC-3, RF-52-AC-2, RNF-12-AC-1, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/PropuestaId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RespuestaPropuestaRequest' }
+      responses:
+        '200':
+          description: Propuesta respondida.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Propuesta' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: La propuesta expiró, fue sustituida por una versión revisada o ya fue respondida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Falta el domicilio (aceptación sin visita previa) o el detalle del ajuste solicitado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ───────────────────────────── Cambios ─────────────────────────────
+  /solicitudes/{solicitudId}/cambios:
+    post:
+      tags: [Cambios]
+      operationId: registrarCambio
+      summary: Registrar una solicitud de cambio (proveedor o cliente)
+      description: |
+        Sobre un acuerdo aceptado. Todos los campos son obligatorios. Se notifica de inmediato a la
+        contraparte y el cambio no se aplica hasta su decisión; la parte afectada queda en pausa.
+        Si lo inicia el cliente (RF-55), decide el proveedor en 24 h.
+      x-roles: [cliente, trabajador, organizacion]
+      x-acceptance-criteria: [RF-40-AC-1, RF-40-AC-2, RF-40-AC-3, RF-41-AC-4, RF-55-AC-1, RF-55-AC-2, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CambioRequest' }
+      responses:
+        '201':
+          description: Cambio registrado en `pendiente_decision`.
+          headers:
+            Location:
+              description: URL del recurso creado (RFC 9110, sección 10.2.2).
+              schema:
+                type: string
+                format: uri-reference
+                example: /api/cambios/{cambioId}
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cambio' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: No existe un acuerdo aceptado sobre el cual registrar el cambio.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Faltan campos obligatorios; se identifica cada uno (RF-40-AC-2, RF-55-AC-2).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500': { $ref: '#/components/responses/InternalError' }
+    get:
+      tags: [Cambios]
+      operationId: listarCambios
+      summary: Listar los cambios de la solicitud
+      description: Incluye el número de alertas sin atender y estados resueltos por plazo (`no_aceptado`, `expirado`).
+      x-acceptance-criteria: [RF-40-AC-4, RF-41-AC-5, RF-41-AC-8, RF-55-AC-5, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+        - name: estado
+          in: query
+          schema: { $ref: '#/components/schemas/EstadoCambio' }
+      responses:
+        '200':
+          description: Cambios.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  alertasSinAtender: { type: integer, minimum: 0 }
+                  elementos:
+                    type: array
+                    items: { $ref: '#/components/schemas/Cambio' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /cambios/{cambioId}:
+    get:
+      tags: [Cambios]
+      operationId: obtenerCambio
+      summary: Consultar un cambio
+      description: Abrir el cambio no lo aplica. Si existe análisis de IA, se indica que no aprueba ni rechaza.
+      x-acceptance-criteria: [RF-40-AC-4, RF-42-AC-2, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/CambioId'
+      responses:
+        '200':
+          description: Cambio.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cambio' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /cambios/{cambioId}/decisiones:
+    post:
+      tags: [Cambios]
+      operationId: decidirCambio
+      summary: Aceptar, rechazar o contraproponer un cambio
+      description: |
+        Decide la contraparte de quien registró el cambio:
+        - cliente sobre un cambio del proveedor: `aceptar`, `rechazar` o `contraproponer` (nuevo plazo de 24 h);
+        - proveedor sobre una contrapropuesta o un cambio iniciado por el cliente: `aceptar` o `rechazar`.
+        Aceptar actualiza el presupuesto y crea una versión nueva (RF-43). Rechazar un cambio necesario deja
+        la parte afectada pendiente de nuevo acuerdo, sin escalar al administrador. Se registra en la bitácora.
+      x-roles: [cliente, trabajador, organizacion]
+      x-acceptance-criteria: [RF-24-AC-1, RF-24-AC-2, RF-41-AC-1, RF-41-AC-2, RF-41-AC-3, RF-41-AC-6, RF-41-AC-7, RF-43-AC-1, RF-55-AC-3, RF-55-AC-4, RNF-12-AC-1, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/CambioId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DecisionCambioRequest' }
+      responses:
+        '200':
+          description: Decisión registrada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cambio' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: El usuario no es la parte que debe decidir (por ejemplo, el administrador, RD-11).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: 'El cambio ya no está pendiente: plazo de 24 h vencido o ya decidido.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'Contrapropuesta incompleta, o falta la autorización explícita (`AUTORIZACION_REQUERIDA`): la acción no se ejecutó (RF-24-AC-2).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /cambios/{cambioId}/analisis:
+    post:
+      tags: [Cambios]
+      operationId: analizarJustificacionCambio
+      summary: Pedir a la IA un análisis de la justificación (informativo)
+      description: Resume consistencias, faltantes y riesgos frente al proyecto. No aprueba ni rechaza (RD-09).
+      x-roles: [cliente]
+      x-acceptance-criteria: [RF-42-AC-1, RF-42-AC-2, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/CambioId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: Análisis generado.
+          headers:
+            Location:
+              description: URL del recurso creado (RFC 9110, sección 10.2.2).
+              schema:
+                type: string
+                format: uri-reference
+                example: /api/cambios/{cambioId}
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalisisIA' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: El cambio no está pendiente de decisión del cliente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/IAnoDisponible' }
+
+  /solicitudes/{solicitudId}/costos:
+    get:
+      tags: [Cambios]
+      operationId: consultarCostos
+      summary: Vista única de costos
+      description: Presupuesto vigente, cambios aprobados y cambios pendientes. No registra lo gastado (FP-22).
+      x-roles: [cliente, trabajador, organizacion]
+      x-acceptance-criteria: [RF-40-AC-4, RF-44-AC-1, RF-44-AC-2, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+      responses:
+        '200':
+          description: Costos.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Costos' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: La solicitud no existe o aún no tiene propuesta aceptada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /solicitudes/{solicitudId}/versiones-presupuesto:
+    get:
+      tags: [Cambios]
+      operationId: listarVersionesPresupuesto
+      summary: Historial cronológico de versiones del presupuesto
+      x-roles: [cliente, trabajador, organizacion]
+      x-acceptance-criteria: [RF-43-AC-1, RF-43-AC-2, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+      responses:
+        '200':
+          description: Versiones en orden cronológico; la primera es el presupuesto inicial inmutable.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/VersionPresupuesto' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /solicitudes/{solicitudId}/registros-bitacora:
+    get:
+      tags: [Cambios]
+      operationId: consultarBitacora
+      summary: Consultar la bitácora de decisiones
+      description: Registros de solo anexado; una corrección agrega un registro nuevo sin borrar el original (RNF-12-AC-2). No existe operación de edición ni borrado.
+      x-roles: [cliente, trabajador, organizacion, administrador]
+      x-acceptance-criteria: [RNF-12-AC-1, RNF-12-AC-2, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+      responses:
+        '200':
+          description: Bitácora.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/RegistroBitacora' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ───────────────────────────── Mensajes ─────────────────────────────
+  /solicitudes/{solicitudId}/mensajes:
+    get:
+      tags: [Mensajes]
+      operationId: listarMensajesCanal
+      summary: Consultar el canal interno del proyecto
+      description: Nunca expone teléfonos de las partes.
+      x-roles: [cliente, trabajador, organizacion]
+      x-acceptance-criteria: [RF-46-AC-1, RF-46-AC-2, RNF-13-AC-1, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+        - name: desde
+          in: query
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Mensajes con fecha, emisor y contenido.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/MensajeCanal' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [Mensajes]
+      operationId: enviarMensajeCanal
+      summary: Enviar un mensaje a la contraparte
+      description: Solo con una cita confirmada; sin ella responde 409 `CANAL_NO_HABILITADO` (RF-46-AC-3).
+      x-roles: [cliente, trabajador, organizacion]
+      x-acceptance-criteria: [RF-46-AC-1, RF-46-AC-3, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [contenido]
+              properties:
+                contenido: { type: string, minLength: 1, maxLength: 4000 }
+      responses:
+        '201':
+          description: Mensaje entregado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MensajeCanal' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: El usuario no participa en el proyecto.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: El canal aún no está habilitado porque no hay una cita confirmada (`CANAL_NO_HABILITADO`, RF-46-AC-3).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ───────────────────────────── Evaluaciones ─────────────────────────────
+  /solicitudes/{solicitudId}/evaluaciones:
+    post:
+      tags: [Evaluaciones]
+      operationId: registrarEvaluacion
+      summary: Evaluar a la contraparte de un proyecto concluido
+      description: |
+        Cliente → proveedor: cuatro dimensiones enteras de 1 a 5; la calificación del trabajo es su promedio.
+        Proveedor → cliente: un entero de 1 a 5. Comentario opcional. Una sola evaluación por parte y proyecto.
+        Cuando ambas partes calificaron, se publican y se recalcula el promedio.
+      x-roles: [cliente, trabajador, organizacion]
+      x-acceptance-criteria: [RF-49-AC-1, RF-49-AC-2, RF-49-AC-3, RF-49-AC-4, RF-49-AC-5, RF-50-AC-1, RF-50-AC-2, RF-50-AC-3, RF-50-AC-4, RF-51-AC-3, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/EvaluacionDeProveedorRequest'
+                - $ref: '#/components/schemas/EvaluacionDeClienteRequest'
+      responses:
+        '201':
+          description: Evaluación registrada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Evaluacion' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: El usuario no participó en el proyecto y no puede evaluarlo.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Proyecto no concluido (`PROYECTO_NO_CONCLUIDO`), evaluación duplicada (`EVALUACION_DUPLICADA`) o solicitud de calificación vencida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Valor fuera de 1 a 5 o no entero (`VALOR_INVALIDO`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500': { $ref: '#/components/responses/InternalError' }
+    get:
+      tags: [Evaluaciones]
+      operationId: listarEvaluacionesSolicitud
+      summary: Consultar las solicitudes de calificación y evaluaciones del proyecto
+      x-roles: [cliente, trabajador, organizacion]
+      x-acceptance-criteria: [RF-51-AC-1, RF-51-AC-4, RNF-03-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/SolicitudId'
+      responses:
+        '200':
+          description: Solicitudes de calificación (abierta, completada, vencida) y evaluaciones visibles para el usuario.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SolicitudCalificacion' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ───────────────────────────── Soporte ─────────────────────────────
+  /casos-soporte:
+    post:
+      tags: [Soporte]
+      operationId: crearCasoSoporte
+      summary: Solicitar soporte humano
+      description: Registra el caso con la solicitud y el resumen de la conversación; lo atiende el administrador.
+      x-roles: [cliente]
+      x-acceptance-criteria: [RF-15-AC-3, RF-22-AC-2, RNF-04-AC-1, RNF-04-AC-2]
+      parameters: [$ref: '#/components/parameters/IdempotencyKey']
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [motivo]
+              properties:
+                solicitudId: { type: string, format: uuid }
+                conversacionId: { type: string, format: uuid }
+                motivo:
+                  type: string
+                  enum: [agente_no_comprende, oficio_no_clasificado, ia_no_resolvio, otro]
+                comentario: { type: string, maxLength: 2000 }
+      responses:
+        '201':
+          description: Caso registrado en estado `pendiente`.
+          headers:
+            Location:
+              description: URL del recurso creado (RFC 9110, sección 10.2.2).
+              schema:
+                type: string
+                format: uri-reference
+                example: /api/casos-soporte/{casoId}
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CasoSoporte' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    get:
+      tags: [Soporte]
+      operationId: listarCasosSoporte
+      summary: Bandeja de casos de soporte (administrador)
+      description: Los casos permanecen registrados hasta que se atienden.
+      x-roles: [administrador]
+      x-acceptance-criteria: [RF-22-AC-3, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - name: estado
+          in: query
+          schema: { type: string, enum: [pendiente, en_atencion, resuelto] }
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/TamanoPagina'
+      responses:
+        '200':
+          description: Casos.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  elementos:
+                    type: array
+                    items: { $ref: '#/components/schemas/CasoSoporte' }
+                  paginacion: { $ref: '#/components/schemas/Paginacion' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /casos-soporte/{casoId}:
+    get:
+      tags: [Soporte]
+      operationId: obtenerCasoSoporte
+      summary: Consultar un caso de soporte
+      x-roles: [cliente, administrador]
+      x-acceptance-criteria: [RF-22-AC-2, RF-22-AC-3, RNF-04-AC-1, RNF-04-AC-2]
+      parameters: [$ref: '#/components/parameters/CasoId']
+      responses:
+        '200':
+          description: Consultar un caso de soporte.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CasoSoporte'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags: [Soporte]
+      operationId: actualizarCasoSoporte
+      summary: Atender un caso de soporte (administrador)
+      x-roles: [administrador]
+      x-acceptance-criteria: [RF-22-AC-3, RNF-04-AC-1, RNF-04-AC-2]
+      parameters: [$ref: '#/components/parameters/CasoId']
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                estado: { type: string, enum: [en_atencion, resuelto] }
+                notas: { type: string, maxLength: 4000 }
+      responses:
+        '200':
+          description: Caso actualizado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CasoSoporte' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    delete:
+      tags: [Soporte]
+      operationId: eliminarCasoSoporte
+      summary: Eliminar un caso de soporte (administrador)
+      x-roles: [administrador]
+      x-acceptance-criteria: [RNF-04-AC-1, RNF-04-AC-2]
+      parameters: [$ref: '#/components/parameters/CasoId']
+      responses:
+        '204': { description: Caso eliminado. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ───────────────────────────── Privacidad (ARCO) ─────────────────────────────
+  /solicitudes-arco:
+    post:
+      tags: [Privacidad]
+      operationId: registrarSolicitudArco
+      summary: Registrar una solicitud ARCO con folio (administrador)
+      x-roles: [administrador]
+      x-acceptance-criteria: [RF-54-AC-5, RNF-04-AC-1, RNF-04-AC-2]
+      parameters: [$ref: '#/components/parameters/IdempotencyKey']
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [usuarioId, tipo]
+              properties:
+                usuarioId: { type: string, format: uuid }
+                tipo: { type: string, enum: [acceso, rectificacion, cancelacion, oposicion] }
+                detalle: { type: string, maxLength: 4000 }
+                plazoDiasHabiles: { type: integer, minimum: 1, default: 20, description: Valor configurable (PV-08). }
+      responses:
+        '201':
+          description: Solicitud registrada con folio y fecha límite.
+          headers:
+            Location:
+              description: URL del recurso creado (RFC 9110, sección 10.2.2).
+              schema:
+                type: string
+                format: uri-reference
+                example: /api/solicitudes-arco/{folio}
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SolicitudArco' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    get:
+      tags: [Privacidad]
+      operationId: listarSolicitudesArco
+      summary: Listar solicitudes ARCO (administrador)
+      description: Marca las que están a 5 días hábiles o menos de vencer.
+      x-roles: [administrador]
+      x-acceptance-criteria: [RF-54-AC-5, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - name: porVencer
+          in: query
+          schema: { type: boolean }
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/TamanoPagina'
+      responses:
+        '200':
+          description: Solicitudes ARCO, paginadas.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  elementos:
+                    type: array
+                    items: { $ref: '#/components/schemas/SolicitudArco' }
+                  paginacion: { $ref: '#/components/schemas/Paginacion' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /solicitudes-arco/{folio}:
+    get:
+      tags: [Privacidad]
+      operationId: obtenerSolicitudArco
+      summary: Consultar una solicitud ARCO (administrador)
+      x-roles: [administrador]
+      x-acceptance-criteria: [RF-54-AC-5, RNF-04-AC-1, RNF-04-AC-2]
+      parameters: [$ref: '#/components/parameters/Folio']
+      responses:
+        '200':
+          description: Consultar una solicitud ARCO.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitudArco'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags: [Privacidad]
+      operationId: registrarRespuestaArco
+      summary: Registrar la respuesta de una solicitud ARCO (administrador)
+      x-roles: [administrador]
+      x-acceptance-criteria: [RF-54-AC-5, RNF-04-AC-1, RNF-04-AC-2]
+      parameters: [$ref: '#/components/parameters/Folio']
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [respuesta]
+              properties:
+                respuesta: { type: string, maxLength: 4000 }
+      responses:
+        '200':
+          description: Respuesta registrada con fecha.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SolicitudArco' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: La solicitud ARCO ya tiene una respuesta registrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /usuarios/{usuarioId}/datos-personales:
+    get:
+      tags: [Privacidad]
+      operationId: exportarDatosPersonales
+      summary: Exportar los datos personales de un usuario (administrador)
+      description: |
+        Todos los datos personales del usuario y ninguno de otro usuario. El formato se elige con el encabezado
+        `Accept`: `application/json` o `application/pdf` (negociación de contenido).
+      x-roles: [administrador]
+      x-acceptance-criteria: [RF-54-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/UsuarioId'
+        - name: folio
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Exportación.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExportacionDatosPersonales' }
+            application/pdf:
+              schema: { type: string, format: binary }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '406':
+          description: El valor de `Accept` no es `application/json` ni `application/pdf`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500': { $ref: '#/components/responses/InternalError' }
+    patch:
+      tags: [Privacidad]
+      operationId: rectificarDatosPersonales
+      summary: Rectificar datos personales (administrador)
+      description: Conserva valor anterior, valor nuevo, autor y fecha.
+      x-roles: [administrador]
+      x-acceptance-criteria: [RF-54-AC-2, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/UsuarioId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [folio, campo, valorNuevo]
+              properties:
+                folio: { type: string }
+                campo: { type: string, enum: [nombre, correo, telefono, domicilio] }
+                valorNuevo: { type: string }
+      responses:
+        '200':
+          description: Rectificación registrada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Rectificacion' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /usuarios/{usuarioId}/anonimizacion:
+    post:
+      tags: [Privacidad]
+      operationId: anonimizarUsuario
+      summary: Anonimizar los datos de un usuario (administrador)
+      description: |
+        Elimina o seudonimiza nombre, teléfono, domicilio, fotos e imágenes de identificación. La bitácora
+        conserva número de registros, montos, fechas y estados (RD-17). Se bloquea si hay un proyecto no concluido.
+      x-roles: [administrador]
+      x-acceptance-criteria: [RF-54-AC-3, RF-54-AC-4, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - $ref: '#/components/parameters/UsuarioId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [folio]
+              properties:
+                folio: { type: string }
+      responses:
+        '200':
+          description: Usuario anonimizado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  seudonimo: { type: string, example: usuario-7f3a }
+                  camposAnonimizados:
+                    type: array
+                    items: { type: string }
+                  registrosBitacoraConservados: { type: integer }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: El usuario tiene un proyecto no concluido; se indica cuál (RF-54-AC-4).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                codigo: PROYECTO_ACTIVO
+                mensaje: No se puede anonimizar mientras exista un proyecto no concluido.
+                detalle: { solicitudId: 3f1c2b9e-1a2b-4c3d-9e8f-001122334455 }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ───────────────────────────── Notificaciones ─────────────────────────────
+  /notificaciones:
+    get:
+      tags: [Notificaciones]
+      operationId: listarNotificaciones
+      summary: Listar las notificaciones del usuario
+      description: Punto de observación de los avisos que generan otras operaciones y el planificador.
+      x-acceptance-criteria: [RF-09-AC-2, RF-10-AC-2, RF-11-AC-2, RF-12-AC-1, RF-12-AC-2, RF-32-AC-1, RF-32-AC-2, RF-34-AC-3, RF-36-AC-1, RF-36-AC-2, RF-36-AC-3, RF-37-AC-1, RF-40-AC-3, RF-47-AC-4, RF-48-AC-1, RF-51-AC-1, RF-54-AC-5, RF-55-AC-1, RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - name: noLeidas
+          in: query
+          schema: { type: boolean }
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/TamanoPagina'
+      responses:
+        '200':
+          description: Notificaciones.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  elementos:
+                    type: array
+                    items: { $ref: '#/components/schemas/Notificacion' }
+                  paginacion: { $ref: '#/components/schemas/Paginacion' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /notificaciones/{notificacionId}:
+    patch:
+      tags: [Notificaciones]
+      operationId: marcarNotificacionLeida
+      summary: Marcar una notificación como leída
+      x-acceptance-criteria: [RNF-04-AC-1, RNF-04-AC-2]
+      parameters:
+        - name: notificacionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [leida]
+              properties:
+                leida: { type: boolean }
+      responses:
+        '200':
+          description: Notificación actualizada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Notificacion' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT de acceso emitido por `POST /auth/login` (o `POST /auth/segundo-factor` para el administrador).
+        Claims: `sub` (usuarioId), `rol` (cliente | trabajador | organizacion | administrador),
+        `avisoVersion` (versión aceptada), `iat`, `exp` y `jti`. Firma HS256 con la variable de entorno
+        `JWT_SECRET`; la vigencia se fija con `JWT_EXPIRATION` (15 minutos por contrato). Se renueva con
+        `POST /auth/renovacion`; la sesión se cierra tras 30 minutos de inactividad (RNF-11-AC-3).
+        Las operaciones restringen además por rol (`x-roles`) y por propiedad del recurso (RNF-04).
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: |
+        Identificador único (UUID v4) generado por el cliente para reintentar un POST sin duplicar el efecto,
+        por ejemplo tras una caída de red en móvil (RNF-13). El servidor guarda la respuesta 24 h:
+        - misma clave y mismo cuerpo: devuelve la respuesta original sin repetir el efecto;
+        - misma clave y cuerpo distinto: responde 422 `IDEMPOTENCY_KEY_REUTILIZADA`.
+      schema:
+        type: string
+        format: uuid
+    CasoId:
+      name: casoId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Folio:
+      name: folio
+      in: path
+      required: true
+      schema:
+        type: string
+        example: ARCO-2026-0001
+    SolicitudId:
+      name: solicitudId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ProveedorId:
+      name: proveedorId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ConversacionId:
+      name: conversacionId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    CitaId:
+      name: citaId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    PropuestaId:
+      name: propuestaId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    CambioId:
+      name: cambioId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    VerificacionId:
+      name: verificacionId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    InvitacionId:
+      name: invitacionId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    AdjuntoId:
+      name: adjuntoId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    RepresentacionId:
+      name: representacionId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    FotoId:
+      name: fotoId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    UsuarioId:
+      name: usuarioId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    Pagina:
+      name: pagina
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    TamanoPagina:
+      name: tamanoPagina
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    OrdenResultados:
+      name: orden
+      in: query
+      description: |
+        `calificacion` (mayor a menor), `precio` (menor a mayor), `disponibilidad` (franja más próxima),
+        `cercania` (colonia propia y luego vecinas), `garantia` (con garantía primero).
+        Empates por calificación de mayor a menor.
+      schema:
+        type: string
+        enum: [calificacion, precio, disponibilidad, cercania, garantia]
+        default: calificacion
+
+  responses:
+    BadRequest:
+      description: Petición mal formada (JSON inválido, tipo de dato o parámetro incorrecto).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: |
+        Sin autenticación válida o sesión expirada. No incluye datos del recurso (RNF-03-AC-1).
+        Códigos: `NO_AUTENTICADO` (falta el encabezado `Authorization: Bearer <token>`),
+        `TOKEN_INVALIDO` (firma, formato o usuario no válidos), `TOKEN_EXPIRADO` (pasó `exp`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { codigo: NO_AUTENTICADO, mensaje: Inicia sesión para continuar. }
+    Forbidden:
+      description: |
+        El usuario no tiene el rol ni la propiedad del recurso (RNF-04), o debe aceptar el aviso
+        de privacidad vigente (`AVISO_PRIVACIDAD_PENDIENTE`, RF-02-AC-3). No incluye datos del recurso.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { codigo: ACCESO_DENEGADO, mensaje: No tienes permiso para esta acción. }
+    NotFound:
+      description: El recurso no existe.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    UnprocessableEntity:
+      description: La petición está bien formada pero sus datos no cumplen una regla de validación; `errores` identifica cada campo.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    InternalError:
+      description: Error interno del servidor.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { codigo: ERROR_INTERNO, mensaje: Ocurrió un error. Intenta de nuevo. }
+    IAnoDisponible:
+      description: El servicio de IA externo no está disponible (RE-04). El cliente puede capturar la solicitud manualmente.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Error'
+              - type: object
+                properties:
+                  capturaManualDisponible: { type: boolean, example: true }
+
+  schemas:
+    # ── Comunes ──
+    Error:
+      type: object
+      required: [codigo, mensaje]
+      properties:
+        codigo: { type: string, example: VALIDACION }
+        mensaje: { type: string, example: Hay datos inválidos. }
+        errores:
+          type: array
+          items: { $ref: '#/components/schemas/ErrorCampo' }
+        detalle:
+          type: object
+          additionalProperties: true
+    ErrorCampo:
+      type: object
+      required: [campo, mensaje]
+      properties:
+        campo: { type: string, example: contrasena }
+        mensaje: { type: string, example: Debe tener al menos 10 caracteres. }
+    Paginacion:
+      type: object
+      properties:
+        pagina: { type: integer }
+        tamanoPagina: { type: integer }
+        total: { type: integer }
+    Monto:
+      type: number
+      format: double
+      minimum: 0
+      multipleOf: 0.01
+      description: Monto en MXN con dos decimales.
+      example: 12500.00
+    MontoConSigno:
+      type: number
+      format: double
+      multipleOf: 0.01
+      description: Monto en MXN; negativo indica ahorro.
+    Moneda:
+      type: string
+      enum: [MXN]
+      default: MXN
+    Rol:
+      type: string
+      enum: [cliente, trabajador, organizacion, administrador]
+    Oficio:
+      type: string
+      description: Catálogo cerrado del piloto (RD-18).
+      enum: [albanileria, plomeria, electricidad, carpinteria, herreria, pintura, pisos_azulejos, vidrieria_canceleria, tablaroca, impermeabilizacion]
+    Municipio:
+      type: string
+      description: Municipios del piloto (RD-18).
+      enum: [guadalajara, zapopan, san_pedro_tlaquepaque, tonala, tlajomulco_de_zuniga, el_salto]
+    Zona:
+      type: object
+      required: [municipio, colonia]
+      properties:
+        municipio: { $ref: '#/components/schemas/Municipio' }
+        colonia: { type: string, example: Providencia }
+    Domicilio:
+      type: object
+      required: [calle, numeroExterior, colonia, municipio, codigoPostal]
+      properties:
+        calle: { type: string }
+        numeroExterior: { type: string }
+        numeroInterior: { type: string }
+        colonia: { type: string }
+        municipio: { $ref: '#/components/schemas/Municipio' }
+        codigoPostal: { type: string, pattern: '^\d{5}$' }
+        referencias: { type: string }
+    DatoConOrigen:
+      type: object
+      description: Dato del perfil con su origen (RF-08).
+      required: [valor, origen]
+      properties:
+        valor: {}
+        origen: { type: string, enum: [declarado, verificado] }
+
+    # ── Cuentas ──
+    RegistroCuentaRequest:
+      type: object
+      required: [nombre, correo, contrasena, rol, aceptaAvisoPrivacidad, versionAviso, declaraMayorDeEdad]
+      properties:
+        nombre: { type: string, minLength: 1, maxLength: 120 }
+        correo: { type: string, format: email }
+        contrasena: { type: string, format: password, minLength: 10 }
+        rol:
+          allOf: [$ref: '#/components/schemas/Rol']
+          description: El valor `administrador` se rechaza con 422 `ROL_NO_PERMITIDO` (RF-01-AC-3).
+        aceptaAvisoPrivacidad: { type: boolean }
+        versionAviso: { type: integer, minimum: 1 }
+        declaraMayorDeEdad: { type: boolean }
+    Cuenta:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        nombre: { type: string }
+        correo: { type: string, format: email }
+        rol: { $ref: '#/components/schemas/Rol' }
+        consentimientoVigente: { $ref: '#/components/schemas/Consentimiento' }
+        requiereAceptarAviso:
+          type: boolean
+          description: true si hay una versión del aviso más reciente que la aceptada (RF-02-AC-3).
+        creadaEn: { type: string, format: date-time }
+    CredencialesRequest:
+      type: object
+      required: [correo, contrasena]
+      properties:
+        correo: { type: string, format: email }
+        contrasena: { type: string, format: password }
+    SesionRespuesta:
+      type: object
+      properties:
+        tokenAcceso: { type: string, description: JWT. Ausente si se requiere segundo factor. }
+        tipoToken: { type: string, enum: [Bearer] }
+        tokenRenovacion: { type: string }
+        expiraEn: { type: integer, description: Segundos. }
+        segundoFactorRequerido: { type: boolean }
+        tokenSegundoFactor: { type: string, description: Token temporal para POST /auth/segundo-factor. }
+        requiereAceptarAviso: { type: boolean }
+        cuenta: { $ref: '#/components/schemas/Cuenta' }
+    SegundoFactorRequest:
+      type: object
+      required: [tokenSegundoFactor, codigo]
+      properties:
+        tokenSegundoFactor: { type: string }
+        codigo: { type: string, pattern: '^\d{6}$' }
+    AvisoPrivacidad:
+      type: object
+      properties:
+        version: { type: integer }
+        texto: { type: string }
+        publicadoEn: { type: string, format: date-time }
+    ConsentimientoRequest:
+      type: object
+      required: [versionAviso, acepta]
+      properties:
+        versionAviso: { type: integer }
+        acepta: { type: boolean, enum: [true] }
+    Consentimiento:
+      type: object
+      properties:
+        versionAviso: { type: integer }
+        aceptadoEn: { type: string, format: date-time }
+        declaraMayorDeEdad: { type: boolean }
+
+    # ── Proveedores ──
+    Modalidad:
+      type: string
+      enum: [trabajador, organizacion]
+    PerfilTrabajadorRequest:
+      type: object
+      description: Todos los campos son opcionales para guardar; los mínimos determinan la visibilidad.
+      properties:
+        nombre: { type: string, maxLength: 120 }
+        fotoUrl: { type: string, format: uri }
+        oficios:
+          type: array
+          items: { $ref: '#/components/schemas/Oficio' }
+        aniosExperiencia: { type: integer, minimum: 0, maximum: 80 }
+        cobertura:
+          type: array
+          items: { $ref: '#/components/schemas/Zona' }
+        horarioAtencion: { $ref: '#/components/schemas/HorarioAtencion' }
+        rangoPrecioReferencia: { $ref: '#/components/schemas/RangoPrecio' }
+        garantia: { type: string, maxLength: 500 }
+        domicilio: { $ref: '#/components/schemas/Domicilio' }
+    PerfilOrganizacionRequest:
+      type: object
+      properties:
+        nombreLegalOComercial: { type: string, maxLength: 200 }
+        representanteContacto: { type: string, maxLength: 120 }
+        oficios:
+          type: array
+          items: { $ref: '#/components/schemas/Oficio' }
+        cobertura:
+          type: array
+          items: { $ref: '#/components/schemas/Zona' }
+        horarioAtencion: { $ref: '#/components/schemas/HorarioAtencion' }
+        rangoPrecioReferencia: { $ref: '#/components/schemas/RangoPrecio' }
+        garantia: { type: string, maxLength: 500 }
+    HorarioAtencion:
+      type: object
+      description: Horario declarado; el plazo de 4 h de RF-32 se cuenta dentro de él.
+      properties:
+        dias:
+          type: array
+          items: { type: string, enum: [lun, mar, mie, jue, vie, sab, dom] }
+        horaInicio: { type: string, example: '08:00' }
+        horaFin: { type: string, example: '18:00' }
+    RangoPrecio:
+      type: object
+      description: Solo de referencia (RD-12).
+      properties:
+        minimo: { $ref: '#/components/schemas/Monto' }
+        maximo: { $ref: '#/components/schemas/Monto' }
+        unidad: { type: string, example: por m² }
+    PerfilPropio:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        modalidad: { $ref: '#/components/schemas/Modalidad' }
+        visibleEnBusquedas: { type: boolean }
+        datosMinimosFaltantes:
+          type: array
+          items: { type: string }
+          example: [foto, cobertura]
+        perfil:
+          oneOf:
+            - $ref: '#/components/schemas/PerfilTrabajadorRequest'
+            - $ref: '#/components/schemas/PerfilOrganizacionRequest'
+        verificaciones:
+          type: array
+          items: { $ref: '#/components/schemas/Verificacion' }
+        actualizadoEn: { type: string, format: date-time }
+    DisponibilidadTrabajadorRequest:
+      type: object
+      required: [fechas]
+      properties:
+        fechas:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [fecha, disponible]
+            properties:
+              fecha: { type: string, format: date }
+              disponible: { type: boolean }
+    DisponibilidadOrganizacionRequest:
+      type: object
+      required: [disponibilidadGeneral]
+      properties:
+        disponibilidadGeneral: { type: string, enum: [aceptando_proyectos, sin_capacidad] }
+    Disponibilidad:
+      type: object
+      properties:
+        fechasNoDisponibles:
+          type: array
+          items: { type: string, format: date }
+        franjasBloqueadas:
+          type: array
+          items: { $ref: '#/components/schemas/Franja' }
+        disponibilidadGeneral: { type: string, enum: [aceptando_proyectos, sin_capacidad] }
+    Franja:
+      type: object
+      properties:
+        inicio: { type: string, format: date-time }
+        fin: { type: string, format: date-time }
+        citaId: { type: string, format: uuid }
+    MarcaVerificacion:
+      type: object
+      properties:
+        tipo: { $ref: '#/components/schemas/TipoVerificacion' }
+        vigente: { type: boolean }
+        otorgadaEn: { type: string, format: date-time }
+    PerfilProveedorPublico:
+      type: object
+      description: Nunca incluye teléfono (RD-15).
+      properties:
+        id: { type: string, format: uuid }
+        modalidad: { $ref: '#/components/schemas/Modalidad' }
+        nombre: { $ref: '#/components/schemas/DatoConOrigen' }
+        fotoUrl: { type: string, format: uri }
+        especialidades: { $ref: '#/components/schemas/DatoConOrigen' }
+        experiencia: { $ref: '#/components/schemas/DatoConOrigen' }
+        cobertura:
+          type: array
+          items: { $ref: '#/components/schemas/Zona' }
+        disponibilidad: { type: string, description: Resumen de disponibilidad vigente. }
+        marcasVerificacion:
+          type: array
+          items: { $ref: '#/components/schemas/MarcaVerificacion' }
+        evaluaciones: { $ref: '#/components/schemas/ResumenEvaluaciones' }
+        comentariosRecientes:
+          type: array
+          description: Sin datos privados de otros clientes.
+          items:
+            type: object
+            properties:
+              texto: { type: string }
+              fecha: { type: string, format: date }
+        portafolio:
+          type: array
+          items: { $ref: '#/components/schemas/FotoPortafolio' }
+        rangoPrecioReferencia: { $ref: '#/components/schemas/RangoPrecio' }
+        garantia: { type: string }
+        domicilio:
+          allOf: [$ref: '#/components/schemas/Domicilio']
+          nullable: true
+          description: Solo si identidad verificada y el cliente tiene cita confirmada con él (RF-53).
+        actualizadoEn: { type: string, format: date-time }
+    FotoPortafolio:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        url: { type: string, format: uri }
+        descripcion: { type: string }
+        creadaEn: { type: string, format: date-time }
+    ResumenEvaluaciones:
+      type: object
+      description: Calculado solo con evaluaciones publicadas.
+      properties:
+        sinEvaluaciones: { type: boolean }
+        numeroEvaluaciones: { type: integer, minimum: 0 }
+        calificacionPromedio: { type: number, nullable: true, example: 4.5 }
+        promedioPorDimension:
+          type: object
+          nullable: true
+          properties:
+            puntualidad: { type: number }
+            calidad: { type: number }
+            limpieza: { type: number }
+            apegoPresupuesto: { type: number }
+    EvaluacionPublicada:
+      type: object
+      properties:
+        calificacionTrabajo: { type: number, example: 4.5 }
+        dimensiones: { $ref: '#/components/schemas/DimensionesEvaluacion' }
+        comentario: { type: string, nullable: true }
+        publicadaEn: { type: string, format: date-time }
+
+    # ── Verificaciones ──
+    TipoVerificacion:
+      type: string
+      enum: [identidad, experiencia, organizacion]
+    EstadoVerificacion:
+      type: string
+      enum: [pendiente, aprobada, rechazada, retirada, vencida]
+    Verificacion:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        proveedorId: { type: string, format: uuid }
+        tipo: { $ref: '#/components/schemas/TipoVerificacion' }
+        estado: { $ref: '#/components/schemas/EstadoVerificacion' }
+        documentos:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              nombre: { type: string }
+        fechaVencimiento: { type: string, format: date, nullable: true }
+        motivo: { type: string, nullable: true, description: Motivo de rechazo o retiro. }
+        resueltaPor: { type: string, format: uuid, nullable: true, description: Administrador responsable. }
+        resueltaEn: { type: string, format: date-time, nullable: true }
+    DecisionVerificacionRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [aprobar, rechazar, retirar]
+        motivo:
+          type: string
+          maxLength: 1000
+          description: Obligatorio al rechazar o retirar.
+        origen:
+          type: string
+          enum: [solicitud_soporte, revision_propia]
+          description: Obligatorio al retirar.
+        casoSoporteId:
+          type: string
+          format: uuid
+
+    # ── Conversaciones ──
+    Conversacion:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        solicitudId: { type: string, format: uuid, nullable: true }
+        esAsistenteAutomatico:
+          type: boolean
+          enum: [true]
+          description: Visible en todo momento (RF-13-AC-2).
+        aclaracionesRealizadas: { type: integer, minimum: 0, maximum: 2 }
+        correccionesConsecutivas: { type: integer, minimum: 0 }
+        mensajes:
+          type: array
+          items: { $ref: '#/components/schemas/MensajeConversacion' }
+        creadaEn: { type: string, format: date-time }
+    MensajeConversacion:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        emisor: { type: string, enum: [cliente, agente] }
+        contenido: { type: string }
+        adjuntos:
+          type: array
+          items: { $ref: '#/components/schemas/Adjunto' }
+        enviadoEn: { type: string, format: date-time }
+    MensajeClienteRequest:
+      type: object
+      properties:
+        contenido: { type: string, maxLength: 4000 }
+        archivos:
+          type: array
+          items: { type: string, format: binary }
+        solicitudDestinoId:
+          type: string
+          format: uuid
+          description: Respuesta a la pregunta del agente sobre a qué proyecto activo corresponde un archivo (RF-18-AC-4).
+        accion:
+          type: string
+          enum: [responder, confirmar_resumen, corregir_resumen, rechazar_interpretacion]
+          default: responder
+    RespuestaAgente:
+      type: object
+      properties:
+        mensaje: { $ref: '#/components/schemas/MensajeConversacion' }
+        tipo:
+          type: string
+          enum: [pregunta, solicitud_foto, pregunta_proyecto_destino, resumen, oferta_soporte]
+          description: Una sola pregunta por mensaje cuando `tipo = pregunta` (RF-14-AC-1, AC-2).
+        datoSolicitado: { type: string, nullable: true, example: medidas }
+        proyectosCandidatos:
+          type: array
+          description: Proyectos activos entre los que debe elegir el cliente (RF-18-AC-4).
+          items: { $ref: '#/components/schemas/SolicitudResumen' }
+        resumen:
+          allOf: [$ref: '#/components/schemas/ResumenSolicitud']
+          nullable: true
+        ofrecerSoporte: { type: boolean }
+        oficioAsignado:
+          allOf: [$ref: '#/components/schemas/Oficio']
+          nullable: true
+        solicitudId: { type: string, format: uuid, nullable: true }
+
+    # ── Solicitudes ──
+    EstadoProyecto:
+      type: string
+      enum: [borrador, confirmada, programado, en_proceso, terminado, concluido]
+    ValorDesconocible:
+      description: Valor capturado o "desconocido" si el cliente no lo conoce (RF-14-AC-5).
+      oneOf:
+        - type: string
+        - type: number
+        - type: string
+          enum: [desconocido]
+    ResumenSolicitud:
+      type: object
+      properties:
+        resultadoEsperado: { type: string }
+        oficio: { $ref: '#/components/schemas/Oficio' }
+        tipoTrabajo: { type: string }
+        zona: { $ref: '#/components/schemas/Zona' }
+        fechaDeseada: { type: string, format: date }
+        descripcion: { type: string }
+        medidas: { $ref: '#/components/schemas/ValorDesconocible' }
+        condicionesEspacio: { $ref: '#/components/schemas/ValorDesconocible' }
+        requiereMateriales: { type: boolean }
+        compradorMateriales: { type: string, enum: [cliente, proveedor, desconocido] }
+        presupuestoCliente: { $ref: '#/components/schemas/Monto' }
+    CrearSolicitudRequest:
+      type: object
+      required: [resultadoEsperado, oficio, zona]
+      properties:
+        resultadoEsperado: { type: string, minLength: 1, maxLength: 2000 }
+        oficio: { $ref: '#/components/schemas/Oficio' }
+        zona: { $ref: '#/components/schemas/Zona' }
+        tipoTrabajo: { type: string }
+        fechaDeseada: { type: string, format: date }
+        descripcion: { type: string, maxLength: 4000 }
+        medidas: { type: string }
+        materiales: { type: string }
+        origen: { type: string, enum: [manual, agente], default: manual }
+    ActualizarSolicitudRequest:
+      type: object
+      properties:
+        resultadoEsperado: { type: string }
+        oficio: { $ref: '#/components/schemas/Oficio' }
+        zona: { $ref: '#/components/schemas/Zona' }
+        tipoTrabajo: { type: string }
+        fechaDeseada: { type: string, format: date }
+        descripcion: { type: string }
+        medidas: { $ref: '#/components/schemas/ValorDesconocible' }
+        condicionesEspacio: { $ref: '#/components/schemas/ValorDesconocible' }
+        materiales: { type: string }
+        compradorMateriales: { type: string, enum: [cliente, proveedor, desconocido] }
+    SolicitudResumen:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        oficio: { $ref: '#/components/schemas/Oficio' }
+        resultadoEsperado: { type: string }
+        estado: { $ref: '#/components/schemas/EstadoProyecto' }
+        zona: { $ref: '#/components/schemas/Zona' }
+        actualizadaEn: { type: string, format: date-time }
+    Solicitud:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        clienteId: { type: string, format: uuid }
+        estado: { $ref: '#/components/schemas/EstadoProyecto' }
+        origen: { type: string, enum: [manual, agente] }
+        resumen: { $ref: '#/components/schemas/ResumenSolicitud' }
+        resumenConfirmado:
+          allOf: [$ref: '#/components/schemas/ResumenSolicitud']
+          nullable: true
+        confirmadaEn: { type: string, format: date-time, nullable: true }
+        zona: { $ref: '#/components/schemas/Zona' }
+        proveedorAsociado:
+          type: object
+          nullable: true
+          properties:
+            id: { type: string, format: uuid }
+            nombre: { type: string }
+            modalidad: { $ref: '#/components/schemas/Modalidad' }
+        invitaciones:
+          type: array
+          items: { $ref: '#/components/schemas/Invitacion' }
+        contadorImagenes: { type: integer, minimum: 0, maximum: 10 }
+        partesEnPausa:
+          type: array
+          description: Partes del trabajo en pausa por cambios pendientes (RF-41-AC-4).
+          items:
+            type: object
+            properties:
+              cambioId: { type: string, format: uuid }
+              descripcion: { type: string }
+        alertasCambioSinAtender: { type: integer, minimum: 0 }
+        solicitudCierre:
+          type: object
+          nullable: true
+          properties:
+            solicitadaEn: { type: string, format: date-time }
+            nota: { type: string }
+        historialEstados:
+          type: array
+          items:
+            type: object
+            properties:
+              estado: { $ref: '#/components/schemas/EstadoProyecto' }
+              en: { type: string, format: date-time }
+              por: { type: string, format: uuid }
+        creadaEn: { type: string, format: date-time }
+    UbicacionVisible:
+      type: object
+      required: [revelado, zona]
+      properties:
+        revelado: { type: boolean }
+        zona: { $ref: '#/components/schemas/Zona' }
+        domicilio:
+          allOf: [$ref: '#/components/schemas/Domicilio']
+          nullable: true
+        archivosDomicilio:
+          type: array
+          items: { $ref: '#/components/schemas/Adjunto' }
+        visibleHasta: { type: string, format: date-time, nullable: true, description: 7 días después de concluir. }
+    Adjunto:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        solicitudId: { type: string, format: uuid }
+        tipo: { type: string, enum: [imagen, video] }
+        mime: { type: string, enum: [image/jpeg, image/png, video/mp4, video/quicktime] }
+        tamanoBytes: { type: integer, maximum: 5242880, description: Límite de 5 MB para imágenes. }
+        esDelDomicilio: { type: boolean }
+        contadorImagenes: { type: integer, minimum: 0, maximum: 10 }
+        creadoEn: { type: string, format: date-time }
+    RepresentacionVisual:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        solicitudId: { type: string, format: uuid }
+        descripcion: { type: string }
+        imagenUrl: { type: string, format: uri }
+        aprobada: { type: boolean }
+        esVersionReferencia: { type: boolean }
+        leyenda: { type: string, enum: ['No es plano técnico'], example: No es plano técnico }
+        creadaEn: { type: string, format: date-time }
+
+    # ── Búsqueda ──
+    ProveedorCompatible:
+      type: object
+      properties:
+        proveedorId: { type: string, format: uuid }
+        nombre: { type: string }
+        modalidad: { $ref: '#/components/schemas/Modalidad' }
+        oficios:
+          type: array
+          items: { $ref: '#/components/schemas/Oficio' }
+        cubreColoniaCliente: { type: boolean, description: false si solo cubre una colonia vecina. }
+        proximaFranjaDisponible: { type: string, format: date-time }
+        calificacionPromedio: { type: number, nullable: true }
+        numeroEvaluaciones: { type: integer }
+        experienciaSimilar: { type: boolean }
+        marcasVerificacion:
+          type: array
+          items: { $ref: '#/components/schemas/MarcaVerificacion' }
+        rangoPrecioReferencia:
+          allOf: [$ref: '#/components/schemas/RangoPrecio']
+          nullable: true
+        ofreceGarantia: { type: boolean }
+    ResultadoBusqueda:
+      type: object
+      required: [elementos, criteriosAplicados]
+      properties:
+        elementos:
+          type: array
+          items: { $ref: '#/components/schemas/ProveedorCompatible' }
+        mensaje:
+          type: string
+          nullable: true
+          example: No hay proveedores disponibles para los criterios seleccionados
+        criteriosAplicados:
+          type: object
+          description: Criterio de orden y filtros vigentes, mostrados al cliente (RF-29-AC-1, AC-3).
+          properties:
+            base:
+              type: array
+              items: { type: string, enum: [oficio, cobertura, disponibilidad, evaluacion] }
+            orden: { type: string }
+            filtros:
+              type: object
+              additionalProperties: true
+    Recomendacion:
+      type: object
+      properties:
+        proveedor: { $ref: '#/components/schemas/ProveedorCompatible' }
+        explicacion:
+          type: object
+          description: Sustento de la recomendación; no afirma que la IA garantice el resultado ni depende de pagos.
+          properties:
+            texto: { type: string }
+            oficio: { $ref: '#/components/schemas/Oficio' }
+            cobertura: { type: string }
+            disponibilidad: { type: string }
+            estadoVerificacion: { type: string }
+    ConjuntoRecomendaciones:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        solicitudId: { type: string, format: uuid }
+        recomendaciones:
+          type: array
+          minItems: 0
+          maxItems: 4
+          items: { $ref: '#/components/schemas/Recomendacion' }
+        menosOpcionesDeLasHabituales: { type: boolean }
+        proveedoresExcluidos:
+          type: array
+          description: Prestadores que rechazaron o dejaron expirar la solicitud (RF-32-AC-3).
+          items: { type: string, format: uuid }
+        criteriosAplicados:
+          type: object
+          additionalProperties: true
+        generadaEn: { type: string, format: date-time }
+    EstadoInvitacion:
+      type: string
+      enum: [pendiente, aceptada, rechazada, expirada]
+    Invitacion:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        solicitudId: { type: string, format: uuid }
+        proveedorId: { type: string, format: uuid }
+        estado: { $ref: '#/components/schemas/EstadoInvitacion' }
+        ficha:
+          type: object
+          description: Ficha del proyecto con colonia y municipio, sin calle ni número.
+          properties:
+            resumen: { $ref: '#/components/schemas/ResumenSolicitud' }
+            zona: { $ref: '#/components/schemas/Zona' }
+        venceEn: { type: string, format: date-time, description: 4 h dentro del horario de atención del prestador. }
+        respondidaEn: { type: string, format: date-time, nullable: true }
+
+    # ── Citas ──
+    TipoCita:
+      type: string
+      enum: [visita_valoracion, ejecucion]
+    EstadoCita:
+      type: string
+      enum: [pendiente, confirmada, cancelada, expirada, rechazada]
+    ProponerCitaRequest:
+      type: object
+      required: [tipo, inicio, duracionMinutos, costo]
+      properties:
+        tipo: { $ref: '#/components/schemas/TipoCita' }
+        inicio: { type: string, format: date-time }
+        duracionMinutos: { type: integer, minimum: 15 }
+        costo:
+          type: object
+          required: [sinCosto]
+          properties:
+            sinCosto: { type: boolean }
+            monto: { $ref: '#/components/schemas/Monto' }
+            moneda: { $ref: '#/components/schemas/Moneda' }
+        reprogramaCitaId:
+          type: string
+          format: uuid
+          description: Cita cancelada que se reprograma (RF-37-AC-3).
+    RespuestaCitaRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [confirmar, rechazar] }
+        domicilio:
+          allOf: [$ref: '#/components/schemas/Domicilio']
+          description: Obligatorio al confirmar una cita de visita (RF-52-AC-3).
+    ModificarCitaRequest:
+      type: object
+      required: [tipo, motivo]
+      properties:
+        tipo:
+          type: string
+          enum: [cancelacion, cambio_fecha, retraso]
+        motivo:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        confirmacion:
+          type: boolean
+          description: Obligatorio y `true` cuando `tipo = cancelacion`.
+        nuevoInicio:
+          type: string
+          format: date-time
+          description: Obligatorio con `cambio_fecha`.
+        retrasoMinutos:
+          type: integer
+          minimum: 1
+          description: Obligatorio con `retraso`.
+    ModificacionCita:
+      type: object
+      properties:
+        tipo: { type: string, enum: [cancelacion, cambio_fecha, retraso, reprogramacion] }
+        motivo: { type: string }
+        solicitadaPor: { type: string, format: uuid }
+        solicitadaEn: { type: string, format: date-time }
+    Cita:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        solicitudId: { type: string, format: uuid }
+        proveedorId: { type: string, format: uuid }
+        tipo: { $ref: '#/components/schemas/TipoCita' }
+        estado: { $ref: '#/components/schemas/EstadoCita' }
+        inicio: { type: string, format: date-time }
+        fin: { type: string, format: date-time }
+        lugar: { type: string, description: 'Colonia y municipio, o domicilio si ya fue revelado a esa parte.' }
+        costo:
+          type: object
+          properties:
+            sinCosto: { type: boolean }
+            monto: { $ref: '#/components/schemas/Monto' }
+            moneda: { $ref: '#/components/schemas/Moneda' }
+        confirmadaPorProveedorEn: { type: string, format: date-time, nullable: true }
+        confirmadaPorClienteEn: { type: string, format: date-time, nullable: true }
+        expiraEn: { type: string, format: date-time, description: 24 h después de la propuesta. }
+        modificaciones:
+          type: array
+          items: { $ref: '#/components/schemas/ModificacionCita' }
+
+    # ── Propuestas ──
+    EstadoPropuesta:
+      type: string
+      enum: [enviada, ajuste_solicitado, sustituida, aceptada, rechazada, expirada]
+    ConceptoPropuesta:
+      type: object
+      required: [descripcion, subtotal]
+      properties:
+        descripcion: { type: string }
+        subtotal: { $ref: '#/components/schemas/Monto' }
+    MaterialPropuesta:
+      type: object
+      required: [descripcion, cantidad, unidad, precioUnitario, subtotal]
+      properties:
+        descripcion: { type: string, minLength: 1 }
+        cantidad: { type: number, exclusiveMinimum: true, minimum: 0 }
+        unidad: { type: string, minLength: 1, example: m² }
+        precioUnitario: { $ref: '#/components/schemas/Monto' }
+        subtotal: { $ref: '#/components/schemas/Monto' }
+        marcaOCalidad: { type: string }
+    PropuestaRequest:
+      type: object
+      required: [trabajo, fechaInicio, fechaFin, manoDeObra, materiales, costosAdicionales, total]
+      properties:
+        trabajo: { type: string, minLength: 1, maxLength: 4000 }
+        fechaInicio: { type: string, format: date }
+        fechaFin: { type: string, format: date }
+        manoDeObra:
+          type: array
+          items: { $ref: '#/components/schemas/ConceptoPropuesta' }
+        materiales:
+          type: array
+          items: { $ref: '#/components/schemas/MaterialPropuesta' }
+        costosAdicionales:
+          type: array
+          items: { $ref: '#/components/schemas/ConceptoPropuesta' }
+        total: { $ref: '#/components/schemas/Monto' }
+        revisaPropuestaId:
+          type: string
+          format: uuid
+          description: Propuesta anterior que esta versión revisa (RF-39-AC-2).
+    Propuesta:
+      allOf:
+        - $ref: '#/components/schemas/PropuestaRequest'
+        - type: object
+          properties:
+            id: { type: string, format: uuid }
+            solicitudId: { type: string, format: uuid }
+            proveedorId: { type: string, format: uuid }
+            version: { type: integer, minimum: 1 }
+            moneda: { $ref: '#/components/schemas/Moneda' }
+            subtotales:
+              type: object
+              properties:
+                manoDeObra: { $ref: '#/components/schemas/Monto' }
+                materiales: { $ref: '#/components/schemas/Monto' }
+                costosAdicionales: { $ref: '#/components/schemas/Monto' }
+            estado: { $ref: '#/components/schemas/EstadoPropuesta' }
+            emitidaEn: { type: string, format: date-time }
+            plazoAcuerdoVenceEn: { type: string, format: date-time, description: 72 h desde la primera propuesta. }
+            ajusteSolicitado: { type: string, nullable: true }
+            aceptacion:
+              type: object
+              nullable: true
+              properties:
+                aceptadaPor: { type: string, format: uuid }
+                aceptadaEn: { type: string, format: date-time }
+    RespuestaPropuestaRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [aceptar, pedir_cambios, rechazar] }
+        ajusteSolicitado: { type: string, maxLength: 2000, description: Obligatorio con `pedir_cambios`. }
+        domicilio:
+          allOf: [$ref: '#/components/schemas/Domicilio']
+          description: Obligatorio al aceptar si no hubo visita de valoración (RF-52-AC-2).
+
+    # ── Cambios ──
+    TipoCambio:
+      type: string
+      enum: [costo, material, alcance, fecha]
+    EstadoCambio:
+      type: string
+      enum: [pendiente_decision, contrapropuesta_pendiente, aceptado, rechazado, no_aceptado, expirado]
+    CambioRequest:
+      type: object
+      required: [tipo, motivo, montoAdicional, presupuestoActualizado, elementosAfectados, fechaPropuesta, necesarioParaContinuar]
+      properties:
+        tipo: { $ref: '#/components/schemas/TipoCambio' }
+        motivo: { type: string, minLength: 1, maxLength: 2000 }
+        montoAdicional: { $ref: '#/components/schemas/MontoConSigno' }
+        presupuestoActualizado: { $ref: '#/components/schemas/Monto' }
+        elementosAfectados:
+          type: array
+          minItems: 1
+          items: { type: string }
+        fechaPropuesta: { type: string, format: date }
+        necesarioParaContinuar:
+          type: boolean
+          description: Si es necesario para continuar la parte afectada (RF-41-AC-2, AC-3).
+        evidenciaAdjuntos:
+          type: array
+          items: { type: string, format: uuid }
+    Cambio:
+      allOf:
+        - $ref: '#/components/schemas/CambioRequest'
+        - type: object
+          properties:
+            id: { type: string, format: uuid }
+            solicitudId: { type: string, format: uuid }
+            iniciadoPor: { type: string, enum: [proveedor, cliente] }
+            estado: { $ref: '#/components/schemas/EstadoCambio' }
+            registradoEn: { type: string, format: date-time }
+            decisionVenceEn: { type: string, format: date-time, description: 24 h por cada ronda. }
+            contrapropuesta:
+              type: object
+              nullable: true
+              properties:
+                montoAdicional: { $ref: '#/components/schemas/MontoConSigno' }
+                presupuestoActualizado: { $ref: '#/components/schemas/Monto' }
+                fechaPropuesta: { type: string, format: date }
+                comentario: { type: string }
+            parteAfectadaEnPausa: { type: boolean }
+            pendienteNuevoAcuerdo: { type: boolean }
+            analisisIA:
+              allOf: [$ref: '#/components/schemas/AnalisisIA']
+              nullable: true
+            accionesDisponibles:
+              type: array
+              items: { type: string, enum: [aceptar, rechazar, contraproponer] }
+    DecisionCambioRequest:
+      type: object
+      required: [decision, autorizacionExplicita]
+      properties:
+        decision: { type: string, enum: [aceptar, rechazar, contraproponer] }
+        autorizacionExplicita: { type: boolean, description: Debe ser `true`; con `false` la acción no se ejecuta y se responde 422 `AUTORIZACION_REQUERIDA` (RF-24). }
+        contrapropuesta:
+          type: object
+          required: [montoAdicional, presupuestoActualizado]
+          properties:
+            montoAdicional: { $ref: '#/components/schemas/MontoConSigno' }
+            presupuestoActualizado: { $ref: '#/components/schemas/Monto' }
+            fechaPropuesta: { type: string, format: date }
+            comentario: { type: string, maxLength: 2000 }
+    AnalisisIA:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        consistencias:
+          type: array
+          items: { type: string }
+        datosFaltantes:
+          type: array
+          items: { type: string }
+        riesgos:
+          type: array
+          items: { type: string }
+        aviso:
+          type: string
+          enum: ['Este análisis es informativo: no aprueba ni rechaza el cambio. La decisión es tuya.']
+        generadoEn: { type: string, format: date-time }
+    Costos:
+      type: object
+      properties:
+        presupuestoInicial: { $ref: '#/components/schemas/Monto' }
+        presupuestoVigente: { $ref: '#/components/schemas/Monto' }
+        moneda: { $ref: '#/components/schemas/Moneda' }
+        cambiosAprobados:
+          type: array
+          items: { $ref: '#/components/schemas/Cambio' }
+        cambiosPendientes:
+          type: array
+          items: { $ref: '#/components/schemas/Cambio' }
+    VersionPresupuesto:
+      type: object
+      properties:
+        version: { type: integer, minimum: 1 }
+        fecha: { type: string, format: date-time }
+        totalAnterior: { $ref: '#/components/schemas/Monto' }
+        totalActualizado: { $ref: '#/components/schemas/Monto' }
+        diferenciaContraInicial: { $ref: '#/components/schemas/MontoConSigno' }
+        cambioId: { type: string, format: uuid, nullable: true }
+        esInicial: { type: boolean }
+    RegistroBitacora:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        fecha: { type: string, format: date-time }
+        usuarioId: { type: string, format: uuid }
+        entidad: { type: string, enum: [propuesta, cambio] }
+        entidadId: { type: string, format: uuid }
+        decision: { type: string, enum: [aceptacion, rechazo, contrapropuesta, ajuste_solicitado, expiracion] }
+        corrigeRegistroId: { type: string, format: uuid, nullable: true }
+        hashEncadenado: { type: string, description: Huella que encadena con el registro anterior para evidenciar alteraciones. }
+
+    # ── Mensajes ──
+    MensajeCanal:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        emisorId: { type: string, format: uuid }
+        emisorRol: { $ref: '#/components/schemas/Rol' }
+        contenido: { type: string }
+        enviadoEn: { type: string, format: date-time }
+
+    # ── Evaluaciones ──
+    DimensionesEvaluacion:
+      type: object
+      required: [puntualidad, calidad, limpieza, apegoPresupuesto]
+      properties:
+        puntualidad: { type: integer, minimum: 1, maximum: 5 }
+        calidad: { type: integer, minimum: 1, maximum: 5 }
+        limpieza: { type: integer, minimum: 1, maximum: 5 }
+        apegoPresupuesto: { type: integer, minimum: 1, maximum: 5 }
+    EvaluacionDeProveedorRequest:
+      type: object
+      description: El cliente evalúa al proveedor.
+      required: [dimensiones]
+      properties:
+        dimensiones: { $ref: '#/components/schemas/DimensionesEvaluacion' }
+        comentario: { type: string, maxLength: 1000 }
+    EvaluacionDeClienteRequest:
+      type: object
+      description: El prestador evalúa al cliente.
+      required: [calificacion]
+      properties:
+        calificacion: { type: integer, minimum: 1, maximum: 5 }
+        comentario: { type: string, maxLength: 1000 }
+    Evaluacion:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        solicitudId: { type: string, format: uuid }
+        evaluadorId: { type: string, format: uuid }
+        evaluadoId: { type: string, format: uuid }
+        direccion: { type: string, enum: [cliente_a_proveedor, proveedor_a_cliente] }
+        dimensiones:
+          allOf: [$ref: '#/components/schemas/DimensionesEvaluacion']
+          nullable: true
+        calificacion: { type: number, description: Promedio de las 4 dimensiones o calificación al cliente. }
+        comentario: { type: string, nullable: true }
+        publicada: { type: boolean }
+        publicadaEn: { type: string, format: date-time, nullable: true }
+        registradaEn: { type: string, format: date-time }
+    SolicitudCalificacion:
+      type: object
+      properties:
+        parte: { type: string, enum: [cliente, proveedor] }
+        estado: { type: string, enum: [abierta, completada, vencida] }
+        abiertaEn: { type: string, format: date-time }
+        venceEn: { type: string, format: date-time, description: 7 días desde la conclusión. }
+        evaluacion:
+          allOf: [$ref: '#/components/schemas/Evaluacion']
+          nullable: true
+
+    # ── Soporte ──
+    CasoSoporte:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        clienteId: { type: string, format: uuid }
+        solicitudId: { type: string, format: uuid, nullable: true }
+        resumenConversacion: { type: string }
+        motivo: { type: string, enum: [agente_no_comprende, oficio_no_clasificado, ia_no_resolvio, otro] }
+        comentario: { type: string, nullable: true }
+        estado: { type: string, enum: [pendiente, en_atencion, resuelto] }
+        atendidoPor: { type: string, format: uuid, nullable: true }
+        notas: { type: string, nullable: true }
+        creadoEn: { type: string, format: date-time }
+
+    # ── Privacidad ──
+    SolicitudArco:
+      type: object
+      properties:
+        folio: { type: string, example: ARCO-2026-0001 }
+        usuarioId: { type: string, format: uuid }
+        tipo: { type: string, enum: [acceso, rectificacion, cancelacion, oposicion] }
+        registradaEn: { type: string, format: date-time }
+        fechaLimite: { type: string, format: date }
+        porVencer: { type: boolean, description: Faltan 5 días hábiles o menos. }
+        respuesta: { type: string, nullable: true }
+        respondidaEn: { type: string, format: date-time, nullable: true }
+    ExportacionDatosPersonales:
+      type: object
+      description: Todos los datos personales del usuario indicado y ninguno de otro usuario.
+      properties:
+        usuarioId: { type: string, format: uuid }
+        folio: { type: string }
+        generadaEn: { type: string, format: date-time }
+        cuenta: { $ref: '#/components/schemas/Cuenta' }
+        perfil:
+          type: object
+          additionalProperties: true
+        solicitudes:
+          type: array
+          items: { $ref: '#/components/schemas/Solicitud' }
+        consentimientos:
+          type: array
+          items: { $ref: '#/components/schemas/Consentimiento' }
+    Rectificacion:
+      type: object
+      properties:
+        campo: { type: string }
+        valorAnterior: { type: string }
+        valorNuevo: { type: string }
+        autorId: { type: string, format: uuid }
+        fecha: { type: string, format: date-time }
+        folio: { type: string }
+
+    # ── Notificaciones ──
+    Notificacion:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        tipo:
+          type: string
+          enum:
+            - verificacion_aprobada
+            - verificacion_rechazada
+            - verificacion_retirada
+            - verificacion_vencida
+            - invitacion_rechazada
+            - invitacion_expirada
+            - cita_propuesta
+            - cita_confirmada
+            - cita_expirada
+            - cita_cancelada
+            - cita_modificada
+            - recordatorio_cita
+            - propuesta_recibida
+            - cambio_registrado
+            - cambio_resuelto
+            - cierre_solicitado
+            - cierre_rechazado
+            - cierre_sin_respuesta
+            - solicitud_calificacion
+            - arco_por_vencer
+            - mensaje_nuevo
+        titulo: { type: string }
+        cuerpo: { type: string }
+        referencia:
+          type: object
+          properties:
+            entidad: { type: string }
+            id: { type: string, format: uuid }
+        leida: { type: boolean }
+        creadaEn: { type: string, format: date-time }
