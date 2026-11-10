@@ -27,7 +27,7 @@ def crear(cliente_id: str, datos: dict) -> dict:
          datos["oficio"], datos["municipio"], datos["colonia"], datos.get("tipoTrabajo"),
          datos.get("fechaDeseada"), datos.get("descripcion"), datos.get("medidas"), datos.get("materiales")),
     )
-    return obtener(solicitud_id)
+    return db.require_row(obtener(solicitud_id), "la solicitud")
 
 
 def obtener(solicitud_id: str) -> dict | None:
@@ -58,7 +58,7 @@ def actualizar(solicitud_id: str, cambios: dict) -> dict:
             f"UPDATE solicitudes SET {asignaciones} WHERE id = %s",
             list(cambios.values()) + [solicitud_id],
         )
-    return obtener(solicitud_id)
+    return db.require_row(obtener(solicitud_id), "la solicitud")
 
 
 def eliminar(solicitud_id: str) -> None:

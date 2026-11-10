@@ -1,5 +1,6 @@
 """Fábrica de la aplicación Flask de UnCalificado."""
 from flask import Flask, jsonify
+from flask.json.provider import DefaultJSONProvider
 
 from . import db
 from .config import Config
@@ -12,6 +13,7 @@ def create_app(overrides: dict | None = None) -> Flask:
     if overrides:
         app.config.update(overrides)
     Config.validate(app.config)          # sin JWT_SECRET válido la API no arranca
+    assert isinstance(app.json, DefaultJSONProvider)
     app.json.sort_keys = False           # respeta el orden de campos del contrato
     app.json.ensure_ascii = False        # acentos legibles en las respuestas
 

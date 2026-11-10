@@ -32,6 +32,15 @@ def query_one(sql, params=()):
         return cur.fetchone()
 
 
+def require_row(fila: dict | None, recurso: str) -> dict:
+    """Comprueba que una escritura devolvió el registro esperado."""
+    if fila is None:
+        raise RuntimeError(
+            f"No se pudo recuperar {recurso} después de la operación."
+        )
+    return fila
+
+
 def query_all(sql, params=()):
     with get_db().cursor() as cur:
         cur.execute(sql, params)

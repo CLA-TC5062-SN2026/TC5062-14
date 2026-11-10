@@ -62,7 +62,10 @@ class Config:
                 "JWT_SECRET usa un valor de ejemplo o de muy baja variedad. "
                 'Genera uno con: python -c "import secrets; print(secrets.token_hex(32))"'
             )
-        segundos = parse_duration(cfg.get("JWT_EXPIRATION"))
+        duracion = cfg.get("JWT_EXPIRATION")
+        if not isinstance(duracion, str):
+            raise ValueError("JWT_EXPIRATION debe ser texto.")
+        segundos = parse_duration(duracion)
         if segundos > JWT_EXPIRATION_MAX_SECONDS:
             raise RuntimeError(
                 f"JWT_EXPIRATION={cfg.get('JWT_EXPIRATION')} excede el máximo permitido "

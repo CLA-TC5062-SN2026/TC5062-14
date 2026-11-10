@@ -64,7 +64,7 @@ def crear(nombre, correo, contrasena, rol, declara_mayor_edad, version_aviso) ->
         if exc.args and exc.args[0] == 1062:  # Duplicate entry
             raise CorreoDuplicado() from exc
         raise
-    return obtener_por_id(usuario_id)
+    return db.require_row(obtener_por_id(usuario_id), "el usuario")
 
 
 def obtener_por_id(usuario_id: str) -> dict | None:

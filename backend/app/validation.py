@@ -28,7 +28,7 @@ class Validator:
 
     def __init__(self, data: dict):
         self.data = data
-        self.errores = []
+        self.errores: list[dict[str, str]] = []
 
     def error(self, campo, mensaje):
         self.errores.append({"campo": campo, "mensaje": mensaje})

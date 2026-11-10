@@ -65,6 +65,7 @@ def login():
     contrasena = data.get("contrasena")
     if not isinstance(contrasena, str) or contrasena == "":
         v.error("contrasena", "Es obligatoria.")
+        raise validation(v.errores, "Faltan credenciales.")
     if v.errores:
         raise validation(v.errores, "Faltan credenciales.")
 
@@ -72,7 +73,7 @@ def login():
     hash_guardado = usuario["contrasena_hash"] if usuario else None
     # Mismo mensaje y mismo costo de cómputo exista o no el correo (RF-01-AC-2).
     valido = usuarios_service.verificar_contrasena(contrasena, hash_guardado)
-    if not valido or not usuario["activo"]:
+    if not valido or usuario is None or not usuario["activo"]:
         raise unauthorized("CREDENCIALES_INVALIDAS", "Correo o contraseña incorrectos.")
 
     usuario.pop("contrasena_hash", None)

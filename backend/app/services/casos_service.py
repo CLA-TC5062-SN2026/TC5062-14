@@ -11,7 +11,7 @@ def crear(cliente_id: str, solicitud_id: str | None, motivo: str, comentario: st
         "VALUES (%s, %s, %s, %s, %s)",
         (caso_id, cliente_id, solicitud_id, motivo, comentario),
     )
-    return obtener(caso_id)
+    return db.require_row(obtener(caso_id), "el caso de soporte")
 
 
 def obtener(caso_id: str) -> dict | None:
@@ -37,7 +37,7 @@ def actualizar(caso_id: str, admin_id: str, estado: str | None, notas: str | Non
         sets.append("notas = %s")
         params.append(notas)
     db.execute(f"UPDATE casos_soporte SET {', '.join(sets)} WHERE id = %s", params + [caso_id])
-    return obtener(caso_id)
+    return db.require_row(obtener(caso_id), "el caso de soporte")
 
 
 def eliminar(caso_id: str) -> None:
