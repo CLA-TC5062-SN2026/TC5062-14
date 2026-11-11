@@ -1,0 +1,7 @@
+[MAIN]
+# No analizar el entorno virtual al correr pylint sobre el paquete.
+ignore=.venv,venv
+ignore-paths=.*/\.venv/.*
+
+[FORMAT]
+max-line-length=100
